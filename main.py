@@ -1,10 +1,13 @@
-import nltk
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from CustomLabelEncoder import CustomLabelEncoder
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
+from sklearn import svm
+from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestClassifier
 # Imports for the plot
 import seaborn as sns
 from matplotlib import pyplot as plt
@@ -153,9 +156,12 @@ y_train = x_data['Rate']
 x_train = x_data.drop('Rate', axis=1)
 
 print(x_train)
-
+# print("SHAPE BEFORE -----------------------------------------------")
+# print(x_train.shape)
+# x_train.dropna()
+# print("SHAPE AFTER -----------------------------------------------")
+# print(x_train.shape)
 # ---------------------------------Testing Preprocessing-----------------------------------
-
 
 # drop any unnecessary columns
 unimportant_columns=['URL','Name','Subtitle','Icon URL','Price','Description','Developer','Age Rating','Languages']
@@ -282,6 +288,10 @@ x_test.drop(['Original Release Date', 'Current Version Release Date'], axis=1, i
 
 test_data = x_test.join(y_test)
 # test_data = remove_special_chars(test_data, 'Developer')
+
+mapping = {'Low': 0, 'Intermediate': 1, 'High': 2}
+data['Rate'] = data['Rate'].map(mapping)
+
 y_test = test_data['Rate']
 x_test = test_data.drop('Rate', axis=1)
 
@@ -326,7 +336,7 @@ x_test = x_test_data.drop('Rate', axis=1)
 
 print(x_test)
 # ----------------------------------------------------------------------------------------------------------------------
-
+print("Decision Tree")
 # Define the decision tree model with default parameters
 model = DecisionTreeClassifier()
 
@@ -339,3 +349,34 @@ y_pred = model.predict(x_test)
 # Evaluate the model's accuracy on the test data
 accuracy = model.score(x_test, y_test)
 print("Accuracy: ", accuracy)
+print()
+print("----------------------------------------------------------------------------------------------------------------")
+#-----------------------------------------------------------------------------------------------------------------------
+print("Random Forest")
+
+# Create a Random Forest classifier with 100 trees
+rf = RandomForestClassifier(n_estimators=100)
+# fit the model to your training data
+rf.fit(x_train, y_train)
+# Predict on the test data
+y_pred = rf.predict(x_test)
+
+# Evaluate the model performance
+accuracy = rf.score(x_test, y_test)
+print(f"Accuracy: {accuracy}")
+print()
+print("----------------------------------------------------------------------------------------------------------------")
+#-----------------------------------------------------------------------------------------------------------------------
+print("SVM")
+
+svm_clf = svm.SVC(kernel="linear", max_iter=30)
+
+svm_clf.fit(x_train, y_train)
+
+y_pred = svm_clf.predict(x_test)
+
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy}")
+print()
+print("----------------------------------------------------------------------------------------------------------------")
+#-----------------------------------------------------------------------------------------------------------------------
