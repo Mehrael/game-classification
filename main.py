@@ -200,7 +200,7 @@ mapping = {'Low': 0, 'Intermediate': 1, 'High': 2}
 data['Rate'] = data['Rate'].map(mapping)
 
 game_data = data.iloc[:, :]
-corr = game_data.corr(method='spearman')
+corr = game_data.corr(method='kendall')
 # Top 50% Correlation training features with the Value
 top_feature = corr.index[abs(corr['Rate']) > 0.03]
 
@@ -239,6 +239,8 @@ train_columns = list(x_train.columns)
 x_test = x_test[train_columns]
 
 # print(x_test)
+print()
+print("----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
 print("Decision Tree")
 # Define the decision tree model with default parameters
