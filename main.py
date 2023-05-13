@@ -79,9 +79,9 @@ unimportant_columns=[ 'ID','Name','URL','Subtitle','Icon URL','Description','Lan
 
 x_train = x_train.drop(unimportant_columns, axis=1)
 
-print(x_train.isnull().sum())
+# print(x_train.isnull().sum())
 x_train['In-app Purchases'].fillna(0, inplace=True)
-print(x_train.isnull().sum())
+# print(x_train.isnull().sum())
 
 x_train['In-app Purchases'] = calc_sum_of_list(df['In-app Purchases'])
 x_train['In-app Purchases'].fillna(0, inplace=True)
@@ -100,7 +100,7 @@ x_train['Current Version Release Date'] = x_train['Current Version Release Date'
 
 # Remove the primary genre from the "Genres" feature
 x_train['Genres'] = x_train['Genres'].apply(lambda x: x.replace(' ', '').split(','))
-x_train['Genres'] = genres_col = genres_weight(x_train)
+x_train['Genres'] = genres_weight(x_train)
 
 data = x_train.join(y_train)
 data = remove_special_chars(data, 'Developer')
@@ -113,8 +113,6 @@ dev_encoder = CustomLabelEncoder()
 x_train['Developer'] = dev_encoder.fit_transform(x_train['Developer'])
 developer_col= x_train['Developer']
 
-print(x_train['Genres'])
-
 # Feature selection using spearman method
 data = x_train.join(y_train)
 
@@ -125,11 +123,12 @@ game_data = data.iloc[:, :]
 corr = game_data.corr(method='kendall')
 # Top 50% Correlation training features with the Value
 top_feature = corr.index[abs(corr['Rate']) > 0.03]
-# print(top_feature)
+
 x_data = game_data[top_feature]
 rate =  x_data['Rate']
 x_data = x_data.drop('Rate', axis=1)
 x_data['Genres'] = game_data['Genres']
+x_data['Developer'] = game_data['Developer']
 x_data['Rate'] = rate
 
 # Correlation plot
@@ -138,12 +137,14 @@ x_data['Rate'] = rate
 # sns.heatmap(top_corr, annot=True)
 # plt.show()
 
-# x_data['Genres'] = genres_col
-print(x_data.columns)
+# drop last column
+top_feature = top_feature[:-1]
 
 # Add additional features to top_feature list
-additional_features = ['Genres']
+additional_features = ['Genres','Developer','Rate']
 top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
+
+
 print(top_feature)
 
 # Standardize the data
@@ -153,18 +154,15 @@ game_data = pd.DataFrame(game_data, columns=top_feature)
 y_train = x_data['Rate']
 x_train = x_data.drop('Rate', axis=1)
 
-
-# x_train['Genres'] = genres_col
-
-print(x_train)
+# print(x_train)
 
 # ---------------------------------Testing Preprocessing-----------------------------------
 
 x_test = x_test.drop(unimportant_columns, axis=1)
 
-print(x_test.isnull().sum())
+# print(x_test.isnull().sum())
 x_test['In-app Purchases'].fillna(0, inplace=True)
-print(x_test.isnull().sum())
+# print(x_test.isnull().sum())
 
 x_test['In-app Purchases'] = calc_sum_of_list(df['In-app Purchases'])
 x_test['In-app Purchases'].fillna(0, inplace=True)
@@ -183,7 +181,7 @@ x_test['Current Version Release Date'] = x_test['Current Version Release Date'].
 
 # Remove the primary genre from the "Genres" feature
 x_test['Genres'] = x_test['Genres'].apply(lambda x: x.replace(' ', '').split(','))
-x_test['Genres'] = genres_col = genres_weight(x_test)
+x_test['Genres'] = genres_weight(x_test)
 
 data = x_test.join(y_test)
 data = remove_special_chars(data, 'Developer')
@@ -193,8 +191,6 @@ x_test['Developer'] = x_test['Developer'].str.replace(r'\\xe7\\xe3o', ' ', regex
 
 # Encode categorical columns (Developer, Languages and Primary Genre)
 dev_encoder = CustomLabelEncoder()
-lang_encoder = CustomLabelEncoder()
-primary_genre_encoder = CustomLabelEncoder()
 x_test['Developer'] = dev_encoder.fit_transform(x_test['Developer'])
 
 # Feature selection using spearman method
@@ -207,7 +203,6 @@ game_data = data.iloc[:, :]
 corr = game_data.corr(method='spearman')
 # Top 50% Correlation training features with the Value
 top_feature = corr.index[abs(corr['Rate']) > 0.03]
-# print(top_feature)
 
 x_data = game_data[top_feature]
 rate =  x_data['Rate']
@@ -221,12 +216,13 @@ x_data['Rate'] = rate
 # sns.heatmap(top_corr, annot=True)
 # plt.show()
 
-# x_data['Genres'] = genres_col
-print(x_data.columns)
+# drop last column
+top_feature = top_feature[:-1]
 
 # Add additional features to top_feature list
-additional_features = ['Genres']
+additional_features = ['Genres','Rate']
 top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
+
 print(top_feature)
 
 # Standardize the data
@@ -235,7 +231,6 @@ game_data = standardization.fit_transform(x_data)
 game_data = pd.DataFrame(game_data, columns=top_feature)
 y_test = x_data['Rate']
 x_test = x_data.drop('Rate', axis=1)
-# x_test['Genres'] = genres_col
 
 # get the order of columns in the training data
 train_columns = list(x_train.columns)
@@ -243,7 +238,7 @@ train_columns = list(x_train.columns)
 # reorder the columns in the test data to match the order in the training data
 x_test = x_test[train_columns]
 
-print(x_test)
+# print(x_test)
 # ----------------------------------------------------------------------------------------------------------------------
 print("Decision Tree")
 # Define the decision tree model with default parameters
