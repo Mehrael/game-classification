@@ -13,14 +13,21 @@ from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split, cross_val_score
 import warnings
+
 warnings.filterwarnings('ignore')
+
+
 def calc_sum_of_list(feature):
     feature = feature.apply(lambda x: sum([float(num.strip(',')) for num in str(x).split()]))
     return feature
+
+
 def remove_first_word(feature):
     feature = list(
         feature.apply(lambda colm: ', '.join(colm.split(', ')[1:] if len(colm.split(', ')) > 1 else colm.split(', '))))
     return feature
+
+
 def remove_special_chars(data_frame, column_name):
     # Define a pattern to match special characters
     pattern = r'[^a-zA-Z0-9\s.,:\'()\-"\\]'
@@ -33,8 +40,9 @@ def remove_special_chars(data_frame, column_name):
     # Drop rows with special characters in the specified column
     data_frame = data_frame[~mask]
     return data_frame
-def genres_weight(df):
 
+
+def genres_weight(df):
     # create a set of unique genres
     unique_genres = set()
     for genres in df['Genres']:
@@ -61,9 +69,12 @@ def genres_weight(df):
     df['Genres'] = replace_Nans(df['Genres'])
     # print(df['Genres'])
     return df['Genres']
+
+
 def replace_Nans(df):
     df = df.fillna(max(df.dropna()) + (sum(df.dropna()) / len(df.dropna())))
     return df
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -74,10 +85,11 @@ Y = df['Rate']
 X = df.drop('Rate', axis=1)
 
 # Split the X and the Y to training and testing sets
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, shuffle=True, random_state=54)
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, shuffle=True, random_state=42)
 
 # drop any unnecessary columns
-unimportant_columns=[ 'Name','URL','Subtitle','Icon URL','Description','Primary Genre'] #,'ID','Price','Age Rating','Languages'
+unimportant_columns = ['Name', 'URL', 'Subtitle', 'Icon URL', 'Description',
+                       'Primary Genre']  # ,'ID','Price','Age Rating','Languages'
 
 x_train = x_train.drop(unimportant_columns, axis=1)
 
@@ -225,7 +237,7 @@ if 'Genres' not in x_data:
 
     # Add additional features to top_feature list
     additional_features = ['Genres', 'Rate']
-    top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))#
+    top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
 if 'Price' not in x_data:
     rate = x_data['Rate']
     x_data = x_data.drop('Rate', axis=1)
@@ -294,7 +306,8 @@ x_test = x_test[train_columns]
 
 # print(x_test)
 print()
-print("----------------------------------------------------------------------------------------------------------------")
+print(
+    "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
 
 print("Decision Tree")
@@ -306,7 +319,7 @@ undersampler = RandomUnderSampler()
 x_train_undersampled, y_train_undersampled = undersampler.fit_resample(x_train, y_train)
 
 # Define the decision tree model with default parameters
-model = DecisionTreeClassifier(max_depth=5,random_state=42)
+model = DecisionTreeClassifier(max_depth=5, random_state=42)
 
 # Fit the model to the undersampled training data
 model.fit(x_train_undersampled, y_train_undersampled)
@@ -327,8 +340,9 @@ print("Accuracy on training data:", accuracy_train)
 print("Accuracy on test data:", accuracy_test)
 
 print()
-print("----------------------------------------------------------------------------------------------------------------")
-#-----------------------------------------------------------------------------------------------------------------------
+print(
+    "----------------------------------------------------------------------------------------------------------------")
+# -----------------------------------------------------------------------------------------------------------------------
 print("Random Forest")
 # Create a Random Forest classifier with 100 trees
 rf = RandomForestClassifier(n_estimators=6, max_depth=6)
@@ -352,11 +366,12 @@ print("Accuracy on training data:", accuracy_train)
 print("Accuracy on test data:", accuracy_test)
 
 print()
-print("----------------------------------------------------------------------------------------------------------------")
-#-----------------------------------------------------------------------------------------------------------------------
+print(
+    "----------------------------------------------------------------------------------------------------------------")
+# -----------------------------------------------------------------------------------------------------------------------
 print("SVM poly")
 # Create an SVM classifier with a linear kernel and max_iter set to 30
-svm_clf = svm.SVC(kernel ='poly', degree = 5)
+svm_clf = svm.SVC(kernel='poly', degree=5)
 
 # Fit the model to the training data
 svm_clf.fit(x_train, y_train)
@@ -377,11 +392,12 @@ print("Accuracy on training data:", accuracy_train)
 print("Accuracy on test data:", accuracy_test)
 
 print()
-print("----------------------------------------------------------------------------------------------------------------")
+print(
+    "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
 print("SVM sigmoid")
 # Create an SVM classifier with a linear kernel and max_iter set to 30
-svm_clf = svm.SVC(kernel ='sigmoid')
+svm_clf = svm.SVC(kernel='sigmoid')
 
 # Fit the model to the training data
 svm_clf.fit(x_train, y_train)
@@ -402,7 +418,8 @@ print("Accuracy on training data:", accuracy_train)
 print("Accuracy on test data:", accuracy_test)
 
 print()
-print("----------------------------------------------------------------------------------------------------------------")
+print(
+    "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
 print("Logistic Regression")
 # Create a logistic regression model
@@ -426,7 +443,8 @@ accuracy_test = accuracy_score(y_test, y_pred_test)
 print("Accuracy on training data:", accuracy_train)
 print("Accuracy on testing data:", accuracy_test)
 print()
-print("----------------------------------------------------------------------------------------------------------------")
+print(
+    "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
 print("Naive Bayes classifier")
 # Create a Gaussian Naive Bayes classifier
@@ -451,12 +469,13 @@ print("Accuracy on training data:", accuracy_train)
 print("Accuracy on test data:", accuracy_test)
 
 print()
-print("----------------------------------------------------------------------------------------------------------------")
+print(
+    "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
 print("KNN")
 
 # Define a range of K values to test
-k_values = range(1,15)
+k_values = range(1, 15)
 
 # Initialize empty lists to store the training and testing accuracy scores
 train_scores = []
@@ -485,13 +504,13 @@ knn = KNeighborsClassifier(n_neighbors=1)
 train_cv_scores = cross_val_score(knn, x_train, y_train, cv=5)
 test_cv_scores = cross_val_score(knn, x_test, y_test, cv=5)
 
-
 # Print the mean and standard deviation of the accuracy scores
-print("Training Accuracy:",train_cv_scores.mean())
-print("Test Accuracy:" ,test_cv_scores.mean())
+print("Training Accuracy:", train_cv_scores.mean())
+print("Test Accuracy:", test_cv_scores.mean())
 
 print()
-print("----------------------------------------------------------------------------------------------------------------")
+print(
+    "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
 print("AdaBoost Model / Boosting Ensemble Learning")
 # Initialize the base model
@@ -519,11 +538,12 @@ print("Accuracy on training data:", accuracy_train)
 print("Accuracy on test data:", accuracy_test)
 
 print()
-print("----------------------------------------------------------------------------------------------------------------")
+print(
+    "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
 print("Bagging Ensemble Learning")
 # Create a base estimator
-base_estimator = DecisionTreeClassifier(max_depth=5,random_state=42)
+base_estimator = DecisionTreeClassifier(max_depth=5, random_state=42)
 
 # Create a Bagging classifier with 50 estimators
 bagging = BaggingClassifier(base_estimator=base_estimator, n_estimators=30, max_samples=0.8, max_features=0.8)
@@ -544,16 +564,17 @@ print("Accuracy on training data:", train_accuracy)
 print("Accuracy on test data:", test_accuracy)
 
 print()
-print("----------------------------------------------------------------------------------------------------------------")
+print(
+    "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
 print("Stacking Ensemble Learning")
 
 # Initialize the base models
 lr = LogisticRegression()
-dt = DecisionTreeClassifier(max_depth=5,random_state=42)
+dt = DecisionTreeClassifier(max_depth=5, random_state=42)
 # knn = KNeighborsClassifier(n_neighbors=1)
 rf = RandomForestClassifier(n_estimators=6, max_depth=6)
-bg =  BaggingClassifier(base_estimator=base_estimator, n_estimators=30, max_samples=0.8, max_features=0.8)
+bg = BaggingClassifier(base_estimator=base_estimator, n_estimators=30, max_samples=0.8, max_features=0.8)
 ab = AdaBoostClassifier(base_estimator=base_clf, n_estimators=100, learning_rate=0.5)
 
 # Fit the base models on the train set
@@ -595,9 +616,10 @@ meta_pred_test = meta_clf.predict(meta_x_test)
 train_accuracy = accuracy_score(y_train, meta_pred_train)
 test_accuracy = accuracy_score(y_test, meta_pred_test)
 
-print('Accuracy of stacking ensemble on train set:',train_accuracy)
-print('Accuracy of stacking ensemble on test set:',test_accuracy)
+print('Accuracy of stacking ensemble on train set:', train_accuracy)
+print('Accuracy of stacking ensemble on test set:', test_accuracy)
 
 print()
-print("----------------------------------------------------------------------------------------------------------------")
+print(
+    "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
