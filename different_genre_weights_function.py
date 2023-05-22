@@ -17,7 +17,17 @@ import matplotlib.pyplot as plt
 
 import warnings
 
+
 warnings.filterwarnings('ignore')
+
+
+def weight_genres(genres):
+    # Create a dictionary to hold the weights
+    weights = {}
+    # Loop through the genres list and assign weights based on order of appearance
+    for i, genre in enumerate(genres):
+        weights[genre] = len(genres) - i
+    return weights
 
 
 def calc_sum_of_list(feature):
@@ -91,8 +101,8 @@ X = df.drop('Rate', axis=1)
 x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, shuffle=True, random_state=42)
 
 # drop any unnecessary columns
-unimportant_columns = ['Name','ID', 'URL', 'Subtitle', 'Icon URL', 'Description',
-                       'Primary Genre']  # ,'Price','Age Rating','Languages'
+unimportant_columns = ['Name', 'URL', 'Subtitle', 'Icon URL', 'Description',
+                       'Primary Genre', 'ID']  # ,'ID','Price','Age Rating','Languages'
 
 x_train = x_train.drop(unimportant_columns, axis=1)
 
@@ -121,8 +131,14 @@ x_train['Original Release Date'] = x_train['Original Release Date'].dt.year.asty
 x_train['Current Version Release Date'] = x_train['Current Version Release Date'].dt.year.astype(float)
 
 # Remove the primary genre from the "Genres" feature
+x_train['Genres'] = remove_first_word(x_train['Genres'])
 x_train['Genres'] = x_train['Genres'].apply(lambda x: x.replace(' ', '').split(','))
-x_train['Genres'] = genres_weight(x_train)
+x_train['Genres'] = x_train['Genres'].apply(weight_genres)
+x_train['weighted genres']= x_train['Genres'].apply(lambda x: sum(x.values()))
+x_train['Genres']=x_train['weighted genres']
+x_train.drop('weighted genres', axis=1)
+# Create a list of all unique genres in the dataset
+# x_train['Genres'] = genres_weight(x_train)
 
 data = x_train.join(y_train)
 data = remove_special_chars(data, 'Developer')
@@ -136,7 +152,7 @@ lang_encoder = CustomLabelEncoder()
 x_train['Languages'] = lang_encoder.fit_transform(x_train['Languages'])
 x_train['Developer'] = dev_encoder.fit_transform(x_train['Developer'])
 
-# Feature selection using spearman method
+# Feature selection using kendall method
 data = x_train.join(y_train)
 
 mapping = {'Low': 0, 'Intermediate': 1, 'High': 2}
@@ -144,7 +160,7 @@ data['Rate'] = data['Rate'].map(mapping)
 
 game_data = data.iloc[:, :]
 corr = game_data.corr(method='kendall')
-# Top 50% Correlation training features with the Value
+# Top 1% Correlation training features with the Value
 top_feature = corr.index[abs(corr['Rate']) > 0.01]
 
 x_data = game_data[top_feature]
@@ -203,7 +219,11 @@ x_test['Current Version Release Date'] = x_test['Current Version Release Date'].
 
 # Remove the primary genre from the "Genres" feature
 x_test['Genres'] = x_test['Genres'].apply(lambda x: x.replace(' ', '').split(','))
-x_test['Genres'] = genres_weight(x_test)
+x_test['Genres'] = x_test['Genres'].apply(weight_genres)
+x_test['weighted genres']= x_test['Genres'].apply(lambda x: sum(x.values()))
+x_test['Genres']=x_test['weighted genres']
+x_test.drop('weighted genres', axis=1)
+#x_test['Genres'] = genres_weight(x_test)
 
 data = x_test.join(y_test)
 data = remove_special_chars(data, 'Developer')
