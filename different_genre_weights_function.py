@@ -15,6 +15,8 @@ from sklearn.model_selection import train_test_split, cross_val_score
 import seaborn as sns
 import matplotlib.pyplot as plt
 from datetime import datetime
+from sklearn import model_selection
+from mlxtend.classifier import StackingCVClassifier
 
 import warnings
 
@@ -672,7 +674,7 @@ y_pred_test = model.predict(x_test)
 # plt.ylabel('Y')
 # plt.title('Naive')
 
-plt.show()
+# plt.show()
 
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
@@ -698,8 +700,8 @@ test_scores = []
 # Loop over each K value and fit the KNN model, then compute training and testing accuracy scores using cross-validation
 for k in k_values:
     knn = KNeighborsClassifier(n_neighbors=k)
-    train_cv_scores = cross_val_score(knn, x_train, y_train, cv=20)
-    test_cv_scores = cross_val_score(knn, x_test, y_test, cv=20)
+    train_cv_scores = cross_val_score(knn, x_train, y_train, cv=3)
+    test_cv_scores = cross_val_score(knn, x_test, y_test, cv=3)
     train_scores.append(train_cv_scores.mean())
     test_scores.append(test_cv_scores.mean())
 
@@ -898,3 +900,50 @@ print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
+print("Simple Stacking CV Classification")
+
+RANDOM_SEED = 42
+
+clf1 = AdaBoostClassifier(base_estimator=base_clf, n_estimators=100, learning_rate=0.5)
+clf2 = RandomForestClassifier(random_state=RANDOM_SEED)
+clf3 = GaussianNB()
+lr = LogisticRegression()
+
+# Starting from v0.16.0, StackingCVRegressor supports
+# `random_state` to get deterministic result.
+sclf = StackingCVClassifier(classifiers=[clf1, clf2, clf3],
+                            meta_classifier=lr,
+                            random_state=RANDOM_SEED)
+
+print('3-fold cross validation:\n')
+
+for clf, label in zip([clf1, clf2, clf3, sclf],
+                      ['AdaBoost',
+                       'Random Forest',
+                       'Naive Bayes',
+                       'StackingClassifier']):
+
+    scores = model_selection.cross_val_score(clf, x_test, y_test, cv=3, scoring='accuracy')
+    print("Accuracy: " ,scores.mean(), " Model: " , label)
+
+# import matplotlib.pyplot as plt
+# from mlxtend.plotting import plot_decision_regions
+# import matplotlib.gridspec as gridspec
+# import itertools
+#
+# gs = gridspec.GridSpec(2, 2)
+#
+# fig = plt.figure(figsize=(10,8))
+#
+# for clf, lab, grd in zip([clf1, clf2, clf3, sclf],
+#                          ['AdaBoost',
+#                           'Random Forest',
+#                           'Naive Bayes',
+#                           'StackingCVClassifier'],
+#                           itertools.product([0, 1], repeat=2)):
+#
+#     clf.fit(x_test, y_test)
+#     ax = plt.subplot(gs[grd[0], grd[1]])
+#     fig = plot_decision_regions(X=x_test.values, y=y_test.values, clf=clf,legend=2  ,filler_feature_values={ 1: 0.5, 0: 0.5,2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5, 6: 0.5, 7: 0.5, 8: 0.5, 9: 0.5, 10: 0.5},)
+#     plt.title(lab)
+# plt.show()
