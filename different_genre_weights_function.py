@@ -333,22 +333,16 @@ print(
 # ----------------------------------------------------------------------------------------------------------------------
 print("Decision Tree")
 
-# Define the undersampler
-# undersampler = RandomUnderSampler()
-
-# Undersample the training data
-# x_train_undersampled, y_train_undersampled = undersampler.fit_resample(x_train, y_train)
-
 # Define the decision tree model with default parameters
 decisionTree = DecisionTreeClassifier(max_depth=5, random_state=42)
-# Fit the model to the undersampled training data using cross-validation
+# Fit the model to the training data using cross-validation
 scores = cross_val_score(decisionTree, x_train, y_train, cv=5)
 
 # Print the cross-validation scores
 print("Cross-validation scores:", scores)
 print("Mean accuracy:", scores.mean())
 
-# Fit the model to the undersampled training data without cross-validation
+# Fit the model to the training data without cross-validation
 decisionTree.fit(x_train, y_train)
 
 # Predict the labels of the training data
@@ -761,7 +755,7 @@ print("AdaBoost Model / Boosting Ensemble Learning")
 base_clf = DecisionTreeClassifier(max_depth=1)
 
 # Create an adaboost classifer object
-abc = AdaBoostClassifier(base_estimator=base_clf, n_estimators=100, learning_rate=0.5)
+abc = AdaBoostClassifier(estimator=base_clf, n_estimators=100, learning_rate=0.5)
 
 base_clf = base_clf.fit(x_train, y_train)
 # Perform 5-fold cross-validation on the training data
@@ -805,7 +799,7 @@ print("Bagging Ensemble Learning")
 base_estimator = DecisionTreeClassifier(max_depth=5, random_state=42)
 
 # Create a Bagging classifier with 30 estimators
-bagging = BaggingClassifier(base_estimator=base_estimator, n_estimators=30, max_samples=0.8, max_features=0.8)
+bagging = BaggingClassifier(estimator=base_estimator, n_estimators=30, max_samples=0.8, max_features=0.8)
 
 # Perform 5-fold cross-validation on the training data
 scores = cross_val_score(bagging, x_train, y_train, cv=5)
@@ -857,8 +851,8 @@ lr = LogisticRegression()
 dt = DecisionTreeClassifier(max_depth=5, random_state=42)
 # knn = KNeighborsClassifier(n_neighbors=1)
 rf = RandomForestClassifier(n_estimators=6, max_depth=6)
-bg = BaggingClassifier(base_estimator=base_estimator, n_estimators=30, max_samples=0.8, max_features=0.8)
-ab = AdaBoostClassifier(base_estimator=base_clf, n_estimators=100, learning_rate=0.5)
+bg = BaggingClassifier(estimator=base_estimator, n_estimators=30, max_samples=0.8, max_features=0.8)
+ab = AdaBoostClassifier(estimator=base_clf, n_estimators=100, learning_rate=0.5)
 
 # Fit the base models on the train set
 lr.fit(x_train, y_train)
@@ -928,7 +922,7 @@ print("Simple Stacking CV Classification")
 
 RANDOM_SEED = 42
 
-clf1 = AdaBoostClassifier(base_estimator=base_clf, n_estimators=100, learning_rate=0.5)
+clf1 = AdaBoostClassifier(estimator=base_clf, n_estimators=100, learning_rate=0.5)
 clf2 = RandomForestClassifier(random_state=RANDOM_SEED)
 clf3 = GaussianNB()
 Lr = LogisticRegression()
@@ -953,7 +947,7 @@ for clf, label in zip([clf1, clf2, clf3, sclf],
 models = {'decisionTree': decisionTree, 'random_forest': random_forest, 'svm_clf': svm_clf, 'svm_clf2': svm_clf2,'svm_clf_poly': svm_clf_poly,
           'lr_model': lr_model, 'GNB': GNB, 'knn': knn, 'base_clf': base_clf, 'ada': ada, 'bagging': bagging, 'lr': lr,
           'dt': dt, 'rf': rf, 'bg': bg, 'ab': ab, 'meta_clf': meta_clf, 'clf1': clf1, 'clf2': clf2, 'clf3': clf3,
-          'Lr': Lr}
+          'Lr': Lr,'sclf':sclf}
 variables = {'x_train': x_train, 'y_train': y_train, 'unimportant_columns': unimportant_columns,
              'top_features': top_feature,
              'standardization': standardization, 'global_vars': global_vars, 'dev_encoder': dev_encoder,

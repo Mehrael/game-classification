@@ -1,15 +1,20 @@
 import pickle
-
+import seaborn as sns
 import nltk
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.tree import plot_tree
+from sklearn import metrics, __all__, model_selection
 
-
+# region functions used
 def preprocess_text(text):
     lemmatizer = WordNetLemmatizer()
     words = word_tokenize(text.lower())
@@ -118,21 +123,32 @@ def genres_weight(df):
 def replace_Nans(df):
     df = df.fillna(max(df.dropna()) + (sum(df.dropna()) / len(df.dropna())))
     return df
-
+# endregion
 
 # region Load models and variables
 models_list = pickle.load(open('classifiers.pkl', 'rb'))
 decisionTree = models_list['decisionTree']
 random_forest = models_list['random_forest']
 svm_clf = models_list['svm_clf']
-svm_clf_poly=models_list['svm_clf_poly']
+svm_clf_poly = models_list['svm_clf_poly']
 svm_clf2 = models_list['svm_clf2']
 lr_model = models_list['lr_model']
 GNB = models_list['GNB']
 knn = models_list['knn']
 base_clf = models_list['base_clf']
 ada = models_list['ada']
+sclf = models_list['sclf']
 bagging = models_list['bagging']
+lr = models_list['lr']
+dt = models_list['dt']
+bg = models_list['bg']
+ab = models_list['ab']
+rf = models_list['rf']
+meta_clf = models_list['meta_clf']
+clf1 = models_list['clf1']
+clf2 = models_list['clf2']
+clf3 = models_list['clf3']
+Lr = models_list['Lr']
 
 variables_list = pickle.load(open('variables.pkl', 'rb'))
 unimportant_columns = variables_list['unimportant_columns']
@@ -173,7 +189,7 @@ x_test['Age Rating'] = x_test['Age Rating'].astype(int)
 # Convert the date columns to datetime format
 x_test['Original Release Date'] = pd.to_datetime(x_test['Original Release Date'], format='%d/%m/%Y')
 x_test['Current Version Release Date'] = pd.to_datetime(x_test['Current Version Release Date'],
-                                                            format='%d/%m/%Y')
+                                                        format='%d/%m/%Y')
 
 # Extract the year features
 x_test['Original Release Date'] = x_test['Original Release Date'].dt.year.astype(int)
@@ -215,7 +231,6 @@ corr = game_data.corr(method='kendall')
 
 x_data = game_data[top_feature]
 
-
 # Standardize the data
 
 game_data = standardization.transform(x_data)
@@ -228,3 +243,259 @@ train_columns = list(x_train.columns)
 
 # reorder the columns in the test data to match the order in the training data
 x_test = x_test[train_columns]
+print()
+
+# ------------------------------[Decision Tree]---------------------------------------------
+print("Decision Tree : ")
+# Predict the labels of the test data
+y_pred_test = decisionTree.predict(x_test)
+# Visualize the decision tree
+plt.figure(figsize=(20, 10))
+plot_tree(decisionTree, filled=True)
+# plt.show()
+# Predict the labels of the training data
+y_pred_train = decisionTree.predict(x_train)
+
+# Calculate the accuracy of the model on the training data
+accuracy_train = accuracy_score(y_train, y_pred_train)
+
+# Calculate the accuracy of the model on the test data
+accuracy_test = accuracy_score(y_test, y_pred_test)
+
+print("Accuracy on training data:", accuracy_train)
+print("Accuracy on test data:", accuracy_test)
+print()
+
+# ------------------------------[Random Forest]---------------------------------------------
+print("Random forest : ")
+# Predict on the test data
+y_pred_test = random_forest.predict(x_test)
+
+plt.figure(figsize=(20, 10))
+plot_tree(random_forest.estimators_[0], feature_names=x_train.columns)
+plt.show()
+
+# Predict on the training data
+y_pred_train = random_forest.predict(x_train)
+
+# Calculate the accuracy of the model on the training data
+accuracy_train = accuracy_score(y_train, y_pred_train)
+
+# Calculate the accuracy of the model on the test data
+accuracy_test = accuracy_score(y_test, y_pred_test)
+
+print("Accuracy on training data:", accuracy_train)
+print("Accuracy on test data:", accuracy_test)
+print()
+
+# ------------------------------[SVM Poly]---------------------------------------------
+print("SVM poly : ")
+# Predict on the training data
+y_pred_train = svm_clf.predict(x_train)
+
+# Predict on the test data
+y_pred_test = svm_clf.predict(x_test)
+
+# Calculate the accuracy of the model on the training data
+accuracy_train = accuracy_score(y_train, y_pred_train)
+
+# Calculate the accuracy of the model on the test data
+accuracy_test = accuracy_score(y_test, y_pred_test)
+
+print("Accuracy on training data:", accuracy_train)
+print("Accuracy on test data:", accuracy_test)
+print()
+
+# ------------------------------[SVM Sigmoid]---------------------------------------------
+print("SVM sigmoid")
+# Predict on the training data
+y_pred_train = svm_clf2.predict(x_train)
+
+# Predict on the test data
+y_pred_test = svm_clf2.predict(x_test)
+
+# Calculate the accuracy of the model on the training data
+accuracy_train = accuracy_score(y_train, y_pred_train)
+
+# Calculate the accuracy of the model on the test data
+accuracy_test = accuracy_score(y_test, y_pred_test)
+
+print("Accuracy on training data:", accuracy_train)
+print("Accuracy on test data:", accuracy_test)
+print()
+
+# ------------------------------[Logistic regression]---------------------------------------------
+print("Logistic Regression: ")
+
+# Predict on the training data
+y_pred_train = lr_model.predict(x_train)
+
+# Predict on the test data
+y_pred_test = lr_model.predict(x_test)
+x = pd.concat([x_test, x_train])
+y = pd.concat([y_test, y_train])
+df = x.join(y)
+sns.regplot(x=x_test['Size'], y=y_pred_test, data=df, logistic=True, ci=None)
+plt.plot(x_test, y_pred_test)
+# plt.show()
+
+# Calculate the accuracy of the model on the training data
+accuracy_train = accuracy_score(y_train, y_pred_train)
+
+# Calculate the accuracy of the model on the test data
+accuracy_test = accuracy_score(y_test, y_pred_test)
+
+print("Accuracy on training data:", accuracy_train)
+print("Accuracy on test data:", accuracy_test)
+print()
+
+# ------------------------------[Naive bayes classifier]---------------------------------------------
+print("Naive Bayes classifier: ")
+# Predict on the training data
+y_pred_train = GNB.predict(x_train)
+
+# Predict on the test data
+y_pred_test = GNB.predict(x_test)
+
+# Calculate the accuracy of the model on the training data
+accuracy_train = accuracy_score(y_train, y_pred_train)
+
+# Calculate the accuracy of the model on the test data
+accuracy_test = accuracy_score(y_test, y_pred_test)
+
+print("Accuracy on training data:", accuracy_train)
+print("Accuracy on test data:", accuracy_test)
+print()
+
+# ------------------------------[KNN]---------------------------------------------
+train_cv_scores = cross_val_score(knn, x_train, y_train, cv=5)
+test_cv_scores = cross_val_score(knn, x_test, y_test, cv=5)
+
+# Print the mean and standard deviation of the accuracy scores
+print("Training Accuracy:", train_cv_scores.mean())
+print("test Accuracy:", test_cv_scores.mean())
+print()
+
+# ---------------------------[AdaBoost]------------------------------------
+# Predict the response for training dataset
+y_pred_train = ada.predict(x_train)
+
+# Predict the response for test dataset
+y_pred_test = ada.predict(x_test)
+
+# Calculate the accuracy of the model on the training data
+accuracy_train = metrics.accuracy_score(y_train, y_pred_train)
+
+# Calculate the accuracy of the model on the test data
+accuracy_test = metrics.accuracy_score(y_test, y_pred_test)
+
+# Print the accuracies
+print("Accuracy on training data:", accuracy_train)
+print("Accuracy on test data:", accuracy_test)
+
+# Visualize the decision tree
+plt.figure(figsize=(20, 10))
+plot_tree(base_clf, filled=True)
+# plt.show()
+print()
+
+# ---------------------------[Bagging Ensemble learning]------------------------------------
+print("Bagging Ensemble Learning: ")
+# Predict the labels for both the training and test data
+y_train_pred = bagging.predict(x_train)
+y_test_pred = bagging.predict(x_test)
+plt.plot(x_test, y_test_pred)
+plt.show()
+
+# Calculate the accuracy of the model on the training and test data
+train_accuracy = accuracy_score(y_train, y_train_pred)
+test_accuracy = accuracy_score(y_test, y_test_pred)
+
+# Print the accuracy scores
+print("Accuracy on training data:", train_accuracy)
+print("Accuracy on test data:", test_accuracy)
+print()
+
+# ---------------------------[Stacking Ensemble learning]------------------------------------
+print('Stacking Ensemble learning')
+# Make predictions on the train set using the metamodel
+lr_pred_test = lr.predict(x_test)
+dt_pred_test = dt.predict(x_test)
+# knn_pred_test = knn.predict(x_test)
+rf_pred_test = rf.predict(x_test)
+bg_pred_test = bg.predict(x_test)
+ab_pred_test = ab.predict(x_test)
+meta_x_test = np.column_stack(
+    (lr_pred_test, dt_pred_test, rf_pred_test, bg_pred_test, ab_pred_test))
+meta_pred_test = meta_clf.predict(meta_x_test)
+plt.plot(x_test, meta_pred_test)
+plt.show()
+# Evaluate the performance of the metamodel on the test set
+test_accuracy = accuracy_score(y_test, meta_pred_test)
+
+print('Accuracy of stacking ensemble on train set:', train_accuracy)
+print('Accuracy of stacking ensemble on test set:', test_accuracy)
+print()
+
+# ---------------------------[Simple Stacking CV Classification]------------------------------------
+print("Simple Stacking CV Classification: ")
+for clf, label in zip([clf1, clf2, clf3, sclf],
+                      ['AdaBoost',
+                       'Random Forest',
+                       'Naive Bayes',
+                       'StackingClassifier']):
+    scores = model_selection.cross_val_score(clf, x_test, y_test, cv=3, scoring='accuracy')
+    print("Accuracy: ", scores.mean(), " Model: ", label)
+
+# def predict_ratings(test_data, true_ratings):
+#     # Get the order of columns in the training data
+#     train_columns = list(x_train.columns)
+#
+#     # Reorder the columns in the test data to match the order in the training data
+#     test_data = test_data[train_columns]
+#
+#     # Make predictions using the trained models
+#     dt_pred = decisionTree.predict(test_data)
+#     rf_pred = random_forest.predict(test_data)
+#     svm_pred = svm_clf.predict(test_data)
+#     svm_poly_pred = svm_clf_poly.predict(test_data)
+#     svm2_pred = svm_clf2.predict(test_data)
+#     lr_pred = lr_model.predict(test_data)
+#     gnb_pred = GNB.predict(test_data)
+#     knn_pred = knn.predict(test_data)
+#     ada_pred = ada.predict(test_data)
+#     bagging_pred = bagging.predict(test_data)
+#
+# Use the predictions from the base models as input features to make predictions on the test set using the metamodel
+#     lr_pred_test = lr.predict(x_test)
+#     dt_pred_test = dt.predict(x_test)
+#     rf_pred_test = rf.predict(x_test)
+#     bg_pred_test = bg.predict(x_test)
+#     ab_pred_test = ab.predict(x_test)
+#     meta_x_test = np.column_stack(
+#         (lr_pred_test, dt_pred_test, rf_pred_test, bg_pred_test, ab_pred_test))
+#     meta_pred_test = meta_clf.predict(meta_x_test)
+#
+#     # Combine the predictions into a DataFrame
+#     pred_df = pd.DataFrame({
+#         'Decision Tree': dt_pred,
+#         'Random Forest': rf_pred,
+#         'SVM': svm_pred,
+#         'SVM Poly': svm_poly_pred,
+#         'SVM2': svm2_pred,
+#         'Logistic Regression': lr_pred,
+#         'Naive Bayes': gnb_pred,
+#         'k-NN': knn_pred,
+#         'AdaBoost': ada_pred,
+#         'Bagging': bagging_pred
+#     })
+#
+#     # Calculate the accuracy of each model
+#     accuracies = []
+#     for col in pred_df.columns:
+#         accuracy = sum(pred_df[col] == true_ratings) / len(true_ratings)
+#         accuracies.append(accuracy)
+#         print(f'{col} Accuracy: {accuracy}')
+#
+#     # Return the mode of the predicted ratings across all models as the final prediction
+#     return pred_df.mode(axis=1)[0], accuracies
