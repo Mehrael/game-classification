@@ -433,10 +433,12 @@ print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
 # -----------------------------------------------------------------------------------------------------------------------
+C = 0.1  # SVM regularization parameter
+
 print("SVM WITHOUT kernal")
 
 # Create an SVM classifier with a polynomial kernel of degree 5
-svm_clf = svm.SVC()
+svm_clf = svm.SVC(C=C)
 
 # Perform 5-fold cross-validation on the training data
 scores = cross_val_score(svm_clf, x_train, y_train, cv=5)
@@ -495,7 +497,7 @@ print(
 print("SVM poly")
 
 # Create an SVM classifier with a polynomial kernel of degree 5
-svm_clf_poly = svm.SVC(kernel='poly', degree=2)
+svm_clf_poly = svm.SVC(kernel='poly', degree=2,C=C)
 
 # Perform 5-fold cross-validation on the training data
 scores = cross_val_score(svm_clf_poly, x_train, y_train, cv=5)
@@ -555,7 +557,7 @@ print(
 print("SVM sigmoid")
 
 # Create an SVM classifier with a sigmoid kernel
-svm_clf2 = svm.SVC(kernel='sigmoid')
+svm_clf2 = svm.SVC(kernel='sigmoid',C=C)
 
 # Perform 5-fold cross-validation on the training data
 scores = cross_val_score(svm_clf2, x_train, y_train, cv=5)
