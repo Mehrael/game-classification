@@ -14,9 +14,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split, cross_val_score
 import seaborn as sns
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 import warnings
-
 
 warnings.filterwarnings('ignore')
 
@@ -34,6 +34,9 @@ def calc_sum_of_list(feature):
     feature = feature.apply(lambda x: sum([float(num.strip(',')) for num in str(x).split()]))
     return feature
 
+def fill_nulls(feature, value):
+    feature = feature.fillna(value)
+    return feature
 
 def remove_first_word(feature):
     feature = list(
@@ -90,6 +93,8 @@ def replace_Nans(df):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# Global dictionary that will store the mean/mode of each feature to use it in testing
+global_vars = {}
 
 df = pd.read_csv('games-classification-dataset.csv')
 
@@ -103,7 +108,10 @@ x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, shuffle
 # drop any unnecessary columns
 unimportant_columns = ['Name', 'URL', 'Subtitle', 'Icon URL', 'Description',
                        'Primary Genre', 'ID']  # ,'ID','Price','Age Rating','Languages'
-
+global_vars['Languages'] = x_train['Languages'].mode().iloc[0]
+global_vars['In-app Purchase'] = 0
+global_vars['Age Rating'] = x_train['Age Rating'].mode().iloc[0]
+global_vars['Primary Genre'] = x_train['Primary Genre'].mode().iloc[0]
 x_train = x_train.drop(unimportant_columns, axis=1)
 
 # print(x_train.isnull().sum())
@@ -127,15 +135,18 @@ x_train['Original Release Date'] = pd.to_datetime(x_train['Original Release Date
 x_train['Current Version Release Date'] = pd.to_datetime(x_train['Current Version Release Date'], format='%d/%m/%Y')
 
 # Extract the year features
-x_train['Original Release Date'] = x_train['Original Release Date'].dt.year.astype(float)
-x_train['Current Version Release Date'] = x_train['Current Version Release Date'].dt.year.astype(float)
+x_train['Original Release Date'] = x_train['Original Release Date'].dt.year.astype(int)
+x_train['Current Version Release Date'] = x_train['Current Version Release Date'].dt.year.astype(int)
+
+global_vars['Original Release Date'] = int(datetime.now().year)
+global_vars['Current Version Release Date'] = int(datetime.now().year)
 
 # Remove the primary genre from the "Genres" feature
 x_train['Genres'] = remove_first_word(x_train['Genres'])
 x_train['Genres'] = x_train['Genres'].apply(lambda x: x.replace(' ', '').split(','))
 x_train['Genres'] = x_train['Genres'].apply(weight_genres)
-x_train['weighted genres']= x_train['Genres'].apply(lambda x: sum(x.values()))
-x_train['Genres']=x_train['weighted genres']
+x_train['weighted genres'] = x_train['Genres'].apply(lambda x: sum(x.values()))
+x_train['Genres'] = x_train['weighted genres']
 x_train.drop('weighted genres', axis=1)
 # Create a list of all unique genres in the dataset
 # x_train['Genres'] = genres_weight(x_train)
@@ -146,6 +157,13 @@ y_train = data['Rate']
 x_train = data.drop('Rate', axis=1)
 x_train['Developer'] = x_train['Developer'].str.replace(r'\\xe7\\xe3o', ' ', regex=True)
 
+# filling Developer with a default value "Unknown"
+global_vars['Developer'] = 'Unknown'
+global_vars['User Rating Count'] = x_train['User Rating Count'].mean()
+global_vars['Size'] = x_train['Size'].mean()
+global_vars['Original Release Date'] = datetime.now()
+global_vars['Current Version Release Date'] = datetime.now()
+global_vars['Genres'] = global_vars['Primary Genre']
 # Encode categorical columns (Developer, Languages and Primary Genre)
 dev_encoder = CustomLabelEncoder()
 lang_encoder = CustomLabelEncoder()
@@ -193,14 +211,13 @@ x_train = x_data.drop('Rate', axis=1)
 x_test = x_test.drop(unimportant_columns, axis=1)
 
 # print(x_test.isnull().sum())
-x_test['In-app Purchases'].fillna(0, inplace=True)
 # print(x_test.isnull().sum())
 
 x_test['In-app Purchases'] = calc_sum_of_list(df['In-app Purchases'])
-x_test['In-app Purchases'].fillna(0, inplace=True)
 
 x_test['Size'] = x_test['Size'].astype(int)
 x_test['User Rating Count'] = x_test['User Rating Count'].astype(int)
+x_test['In-app Purchases'].fillna(0, inplace=True)
 x_test['In-app Purchases'] = x_test['In-app Purchases'].astype(int)
 
 # Remove the '+' sign from the 'Age rating' column
@@ -214,16 +231,22 @@ x_test['Original Release Date'] = pd.to_datetime(x_test['Original Release Date']
 x_test['Current Version Release Date'] = pd.to_datetime(x_test['Current Version Release Date'], format='%d/%m/%Y')
 
 # Extract the year features
-x_test['Original Release Date'] = x_test['Original Release Date'].dt.year.astype(float)
-x_test['Current Version Release Date'] = x_test['Current Version Release Date'].dt.year.astype(float)
+x_test['Original Release Date'] = x_test['Original Release Date'].dt.year.astype(int)
+x_test['Current Version Release Date'] = x_test['Current Version Release Date'].dt.year.astype(int)
+
+for col in x_test.columns:
+    if col == 'In-app Purchases' or col == 'Price':
+        x_test[col] = fill_nulls(x_test[col], 0)
+    else:
+        x_test[col].fillna(global_vars[col], inplace=True)
 
 # Remove the primary genre from the "Genres" feature
 x_test['Genres'] = x_test['Genres'].apply(lambda x: x.replace(' ', '').split(','))
 x_test['Genres'] = x_test['Genres'].apply(weight_genres)
-x_test['weighted genres']= x_test['Genres'].apply(lambda x: sum(x.values()))
-x_test['Genres']=x_test['weighted genres']
+x_test['weighted genres'] = x_test['Genres'].apply(lambda x: sum(x.values()))
+x_test['Genres'] = x_test['weighted genres']
 x_test.drop('weighted genres', axis=1)
-#x_test['Genres'] = genres_weight(x_test)
+# x_test['Genres'] = genres_weight(x_test)
 
 data = x_test.join(y_test)
 data = remove_special_chars(data, 'Developer')
@@ -232,8 +255,7 @@ x_test = data.drop('Rate', axis=1)
 x_test['Developer'] = x_test['Developer'].str.replace(r'\\xe7\\xe3o', ' ', regex=True)
 
 # Encode categorical columns (Developer, Languages and Primary Genre)
-dev_encoder = CustomLabelEncoder()
-x_test['Developer'] = dev_encoder.fit_transform(x_test['Developer'])
+x_test['Developer'] = dev_encoder.transform(x_test['Developer'])
 x_test['Languages'] = lang_encoder.transform(x_test['Languages'])
 
 # Feature selection using spearman method
@@ -374,7 +396,7 @@ y_pred_test = model.predict(x_test)
 from sklearn.tree import plot_tree
 
 # Visualize the decision tree
-plt.figure(figsize=(20,10))
+plt.figure(figsize=(20, 10))
 plot_tree(model, filled=True)
 plt.show()
 
@@ -425,10 +447,9 @@ y_pred_test = rf.predict(x_test)
 # plt.plot(y_test, y_pred_test, color='red', linewidth = 3)
 # plt.show()
 
-plt.figure(figsize=(20,10))
+plt.figure(figsize=(20, 10))
 plot_tree(rf.estimators_[0], feature_names=x_train.columns)
 plt.show()
-
 
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
@@ -490,7 +511,6 @@ y_pred_test = svm_clf.predict(x_test)
 # plt.show()
 
 
-
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
 
@@ -524,7 +544,6 @@ y_pred_train = svm_clf2.predict(x_train)
 # Predict on the test data
 y_pred_test = svm_clf2.predict(x_test)
 
-
 # plt.scatter(y_train, y_pred_train)
 # plt.xlabel('y_train ', fontsize = 20)
 # plt.ylabel('y_pred_train', fontsize = 20)
@@ -537,7 +556,6 @@ y_pred_test = svm_clf2.predict(x_test)
 # plt.ylabel('y_pred_test', fontsize = 20)
 # plt.plot(y_test, y_pred_test, color='red', linewidth = 3)
 # plt.show()
-
 
 
 # Calculate the accuracy of the model on the training data
@@ -573,7 +591,6 @@ y_pred_train = lr_model.predict(x_train)
 # Predict on the testing data
 y_pred_test = lr_model.predict(x_test)
 
-
 # plt.scatter(y_train, y_pred_train)
 # plt.xlabel('y_train ', fontsize = 20)
 # plt.ylabel('y_pred_train', fontsize = 20)
@@ -588,8 +605,8 @@ y_pred_test = lr_model.predict(x_test)
 # plt.show()
 #
 
-x = x_train.append(x_test)
-y = y_train.append(y_test)
+x = pd.concat([x_test,x_train])
+y = pd.concat([y_test,y_train])
 df = x.join(y)
 
 sns.regplot(x=x_test['Developer'], y=y_pred_test, data=df, logistic=True, ci=None)
@@ -599,7 +616,6 @@ plt.show()
 sns.regplot(x=x_test['Size'], y=y_pred_test, data=df, logistic=True, ci=None)
 plt.plot(x_test, y_pred_test)
 plt.show()
-
 
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
@@ -718,7 +734,7 @@ base_clf = DecisionTreeClassifier(max_depth=1)
 # Create adaboost classifer object
 abc = AdaBoostClassifier(base_estimator=base_clf, n_estimators=100, learning_rate=0.5)
 
-base_clf = base_clf.fit(x_train,y_train)
+base_clf = base_clf.fit(x_train, y_train)
 # Perform 5-fold cross-validation on the training data
 scores = cross_val_score(abc, x_train, y_train, cv=5)
 
@@ -735,7 +751,6 @@ y_pred_train = model.predict(x_train)
 # Predict the response for test dataset
 y_pred_test = model.predict(x_test)
 
-
 # Calculate the accuracy of the model on the training data
 accuracy_train = metrics.accuracy_score(y_train, y_pred_train)
 
@@ -749,10 +764,9 @@ print("Accuracy on test data:", accuracy_test)
 from sklearn.tree import plot_tree
 
 # Visualize the decision tree
-plt.figure(figsize=(20,10))
+plt.figure(figsize=(20, 10))
 plot_tree(base_clf, filled=True)
 plt.show()
-
 
 print()
 print(
@@ -779,7 +793,6 @@ bagging.fit(x_train, y_train)
 # Predict the labels for both the training and test data
 y_train_pred = bagging.predict(x_train)
 y_test_pred = bagging.predict(x_test)
-
 
 # plt.scatter(y_train, y_pred_train)
 # plt.xlabel('y_train ', fontsize = 20)
@@ -873,7 +886,6 @@ meta_pred_test = meta_clf.predict(meta_x_test)
 
 plt.plot(x_test, meta_pred_test)
 plt.show()
-
 
 # Evaluate the performance of the meta-model on the train and test sets
 train_accuracy = accuracy_score(y_train, meta_pred_train)

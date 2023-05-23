@@ -136,7 +136,7 @@ lang_encoder = CustomLabelEncoder()
 x_train['Languages'] = lang_encoder.fit_transform(x_train['Languages'])
 x_train['Developer'] = dev_encoder.fit_transform(x_train['Developer'])
 
-# Feature selection using spearman method
+# Feature selection using kendall method
 data = x_train.join(y_train)
 
 mapping = {'Low': 0, 'Intermediate': 1, 'High': 2}
@@ -144,7 +144,7 @@ data['Rate'] = data['Rate'].map(mapping)
 
 game_data = data.iloc[:, :]
 corr = game_data.corr(method='kendall')
-# Top 50% Correlation training features with the Value
+# Top 1% Correlation training features with the Value
 top_feature = corr.index[abs(corr['Rate']) > 0.01]
 
 x_data = game_data[top_feature]
@@ -361,7 +361,7 @@ plt.show()
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
 
-# Calculate theaccuracy of the model on the test data
+# Calculate the accuracy of the model on the test data
 accuracy_test = accuracy_score(y_test, y_pred_test)
 
 print("Accuracy on training data:", accuracy_train)
@@ -786,6 +786,7 @@ test_accuracy = accuracy_score(y_test, y_test_pred)
 # Print the accuracy scores
 print("Accuracy on training data:", train_accuracy)
 print("Accuracy on test data:", test_accuracy)
+
 print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
