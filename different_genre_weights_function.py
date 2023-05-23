@@ -1,32 +1,74 @@
-import numpy as np
-from sklearn.naive_bayes import GaussianNB
-from sklearn.preprocessing import StandardScaler
-from CustomLabelEncoder import CustomLabelEncoder
-from sklearn import svm
-import pandas as pd
-from sklearn import metrics
-from imblearn.under_sampling import RandomUnderSampler
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, AdaBoostClassifier, StackingClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import train_test_split, cross_val_score
-import seaborn as sns
-import matplotlib.pyplot as plt
-from datetime import datetime
-from sklearn import model_selection
-from mlxtend.classifier import StackingCVClassifier
-
 import warnings
+from datetime import datetime
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from imblearn.under_sampling import RandomUnderSampler
+from mlxtend.classifier import StackingCVClassifier
+import nltk
+from nltk.corpus import wordnet
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn import metrics
+from sklearn import model_selection
+from sklearn import svm
+from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, AdaBoostClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
+from CustomLabelEncoder import CustomLabelEncoder
 
 warnings.filterwarnings('ignore')
+
+lemmatizer = WordNetLemmatizer()
+vectorizer = TfidfVectorizer()
+
+
+def preprocess_text(text):
+    words = word_tokenize(text.lower())
+    words = [lemmatizer.lemmatize(w) for w in words]
+    s_words = set(words)
+    return s_words
+
+
+def feature_extraction(description_column):
+    returned_list = []
+    for description in description_column:
+        words = preprocess_text(description)
+        meaningful_words = []
+        for word in words:
+            if len(word) < 3:
+                continue
+            synsets = wordnet.synsets(word)
+            if synsets:
+                meaningful_words.append(word)
+
+        pos_tags = nltk.pos_tag(meaningful_words)
+        nouns = [word for word, pos in pos_tags if pos.startswith('NN')]
+        nouns = ' '.join(nouns)
+        returned_list.append(nouns)
+    returned_list = pd.DataFrame({'New': returned_list})
+    # print(returned_list)
+    features = vectorizer.fit_transform(returned_list['New'])
+    # print(features)
+    # Calculate the average TF-IDF value for each row
+    max_tfidf = features.max(axis=1)
+    max_tfidf = max_tfidf.todense().A1
+    # Assign the average TF-IDF values to a new column in the data frame
+    description_column = max_tfidf
+    return description_column
 
 
 def weight_genres(genres):
     # Create a dictionary to hold the weights
     weights = {}
-    # Loop through the genres list and assign weights based on order of appearance
+    # Loop through the genre list and assign weights based on order of appearance
     for i, genre in enumerate(genres):
         weights[genre] = len(genres) - i
     return weights
@@ -36,9 +78,11 @@ def calc_sum_of_list(feature):
     feature = feature.apply(lambda x: sum([float(num.strip(',')) for num in str(x).split()]))
     return feature
 
+
 def fill_nulls(feature, value):
     feature = feature.fillna(value)
     return feature
+
 
 def remove_first_word(feature):
     feature = list(
@@ -108,14 +152,14 @@ X = df.drop('Rate', axis=1)
 x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, shuffle=True, random_state=42)
 
 # drop any unnecessary columns
-unimportant_columns = ['Name', 'URL', 'Subtitle', 'Icon URL', 'Description',
+unimportant_columns = ['Name', 'URL', 'Subtitle', 'Icon URL',
                        'Primary Genre', 'ID']  # ,'ID','Price','Age Rating','Languages'
 global_vars['Languages'] = x_train['Languages'].mode().iloc[0]
 global_vars['In-app Purchase'] = 0
 global_vars['Age Rating'] = x_train['Age Rating'].mode().iloc[0]
 global_vars['Primary Genre'] = x_train['Primary Genre'].mode().iloc[0]
 x_train = x_train.drop(unimportant_columns, axis=1)
-
+x_train['Description'] = feature_extraction(x_train['Description'])
 # print(x_train.isnull().sum())
 x_train['In-app Purchases'].fillna(0, inplace=True)
 # print(x_train.isnull().sum())
@@ -166,6 +210,7 @@ global_vars['Size'] = x_train['Size'].mean()
 global_vars['Original Release Date'] = datetime.now()
 global_vars['Current Version Release Date'] = datetime.now()
 global_vars['Genres'] = global_vars['Primary Genre']
+global_vars['Description'] = 'No Description'
 # Encode categorical columns (Developer, Languages and Primary Genre)
 dev_encoder = CustomLabelEncoder()
 lang_encoder = CustomLabelEncoder()
@@ -194,7 +239,7 @@ if 'Developer' not in x_data:
     # drop last column
     top_feature = top_feature[:-1]
 
-    # Add additional features to top_feature list
+    # Add additional features to the top_feature list
     additional_features = ['Developer', 'Rate']
     top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
 
@@ -212,6 +257,8 @@ x_train = x_data.drop('Rate', axis=1)
 
 x_test = x_test.drop(unimportant_columns, axis=1)
 
+x_test['Description'] = feature_extraction(x_test['Description'])
+
 # print(x_test.isnull().sum())
 # print(x_test.isnull().sum())
 
@@ -227,6 +274,8 @@ x_test['Age Rating'] = x_test['Age Rating'].str.replace('+', '', regex=False)
 
 # Convert the 'Age rating' column to an integer data type
 x_test['Age Rating'] = x_test['Age Rating'].astype(int)
+
+
 
 # Convert the date columns to datetime format
 x_test['Original Release Date'] = pd.to_datetime(x_test['Original Release Date'], format='%d/%m/%Y')
@@ -282,7 +331,7 @@ if 'Genres' not in x_data:
     # drop last column
     top_feature = top_feature[:-1]
 
-    # Add additional features to top_feature list
+    # Add additional features to the top_feature list
     additional_features = ['Genres', 'Rate']
     top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
 if 'Price' not in x_data:
@@ -294,7 +343,7 @@ if 'Price' not in x_data:
     # drop last column
     top_feature = top_feature[:-1]
 
-    # Add additional features to top_feature list
+    # Add additional features to the top_feature list
     additional_features = ['Price', 'Rate']
     top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
 if 'Languages' not in x_data:
@@ -306,7 +355,7 @@ if 'Languages' not in x_data:
     # drop last column
     top_feature = top_feature[:-1]
 
-    # Add additional features to top_feature list
+    # Add additional features to the top_feature list
     additional_features = ['Languages', 'Rate']
     top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
 
@@ -319,7 +368,7 @@ if 'Age Rating' not in x_data:
     # drop last column
     top_feature = top_feature[:-1]
 
-    # Add additional features to top_feature list
+    # Add additional features to the top_feature list
     additional_features = ['Age Rating', 'Rate']
     top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
 
@@ -330,12 +379,6 @@ if 'Developer' not in x_data:
     x_data['Developer'] = game_data['Developer']
     x_data['Rate'] = rate
 
-    # drop last column
-    top_feature = top_feature[:-1]
-
-    # Add additional features to top_feature list
-    additional_features = ['Developer', 'Rate']
-    top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
 print(top_feature)
 
 # Standardize the data
@@ -607,8 +650,8 @@ y_pred_test = lr_model.predict(x_test)
 # plt.show()
 #
 
-x = pd.concat([x_test,x_train])
-y = pd.concat([y_test,y_train])
+x = pd.concat([x_test, x_train])
+y = pd.concat([y_test, y_train])
 df = x.join(y)
 
 sns.regplot(x=x_test['Developer'], y=y_pred_test, data=df, logistic=True, ci=None)
@@ -668,11 +711,8 @@ y_pred_test = model.predict(x_test)
 #
 # from mlxtend.plotting import plot_decision_regions
 #
-# plot_decision_regions(x_train.values, y_train.values, clf=model, legend=2, feature_index=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
-# # Adding axes annotations
-# plt.xlabel('X')
-# plt.ylabel('Y')
-# plt.title('Naive')
+# plot_decision_regions(x_train.values, y_train.values, clf=model, legend=2, feature_index=(0, 1, 2, 3, 4, 5, 6, 7,
+# 8, 9)) # Adding axes annotations plt.xlabel('X') plt.ylabel('Y') plt.title('Naive')
 
 # plt.show()
 
@@ -733,7 +773,7 @@ print("AdaBoost Model / Boosting Ensemble Learning")
 # Initialize the base model
 base_clf = DecisionTreeClassifier(max_depth=1)
 
-# Create adaboost classifer object
+# Create an adaboost classifer object
 abc = AdaBoostClassifier(base_estimator=base_clf, n_estimators=100, learning_rate=0.5)
 
 base_clf = base_clf.fit(x_train, y_train)
@@ -762,8 +802,6 @@ accuracy_test = metrics.accuracy_score(y_test, y_pred_test)
 # Print the accuracies
 print("Accuracy on training data:", accuracy_train)
 print("Accuracy on test data:", accuracy_test)
-
-from sklearn.tree import plot_tree
 
 # Visualize the decision tree
 plt.figure(figsize=(20, 10))
@@ -827,8 +865,6 @@ print(
 # ----------------------------------------------------------------------------------------------------------------------
 print("Stacking Ensemble Learning")
 
-from sklearn.model_selection import cross_val_score
-
 # Initialize the base models
 lr = LogisticRegression()
 dt = DecisionTreeClassifier(max_depth=5, random_state=42)
@@ -853,15 +889,15 @@ rf_pred_train = rf.predict(x_train)
 bg_pred_train = bg.predict(x_train)
 ab_pred_train = ab.predict(x_train)
 
-# Use the predictions from the base models as input features to train the meta-model on the train set
+# Use the predictions from the base models as input features to train the metamodel on the train set
 meta_X_train = np.column_stack((lr_pred_train, dt_pred_train, rf_pred_train, bg_pred_train, ab_pred_train))
 meta_clf = LogisticRegression()
 meta_clf.fit(meta_X_train, y_train)
 
-# Make predictions on the train set using the meta-model
+# Make predictions on the train set using the metamodel
 meta_pred_train = meta_clf.predict(meta_X_train)
 
-# Use the predictions from the base models as input features to make predictions on the test set using the meta-model
+# Use the predictions from the base models as input features to make predictions on the test set using the metamodel
 lr_pred_test = lr.predict(x_test)
 dt_pred_test = dt.predict(x_test)
 # knn_pred_test = knn.predict(x_test)
@@ -889,7 +925,7 @@ meta_pred_test = meta_clf.predict(meta_x_test)
 plt.plot(x_test, meta_pred_test)
 plt.show()
 
-# Evaluate the performance of the meta-model on the train and test sets
+# Evaluate the performance of the metamodel on the train and test sets
 train_accuracy = accuracy_score(y_train, meta_pred_train)
 test_accuracy = accuracy_score(y_test, meta_pred_test)
 
@@ -922,9 +958,8 @@ for clf, label in zip([clf1, clf2, clf3, sclf],
                        'Random Forest',
                        'Naive Bayes',
                        'StackingClassifier']):
-
     scores = model_selection.cross_val_score(clf, x_test, y_test, cv=3, scoring='accuracy')
-    print("Accuracy: " ,scores.mean(), " Model: " , label)
+    print("Accuracy: ", scores.mean(), " Model: ", label)
 
 # import matplotlib.pyplot as plt
 # from mlxtend.plotting import plot_decision_regions
