@@ -1,3 +1,4 @@
+import pickle
 import warnings
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -5,6 +6,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from imblearn.under_sampling import RandomUnderSampler
+import matplotlib.pyplot as plt
 from mlxtend.classifier import StackingCVClassifier
 import nltk
 from nltk.corpus import wordnet
@@ -23,6 +25,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from CustomLabelEncoder import CustomLabelEncoder
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
 
 warnings.filterwarnings('ignore')
 
@@ -139,7 +143,7 @@ def replace_Nans(df):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Global dictionary that will store the mean/mode of each feature to use it in testing
+# Global dictionary that will store the mean/mode of each feature to use it in validate
 global_vars = {}
 
 df = pd.read_csv('games-classification-dataset.csv')
@@ -148,8 +152,8 @@ df = pd.read_csv('games-classification-dataset.csv')
 Y = df['Rate']
 X = df.drop('Rate', axis=1)
 
-# Split the X and the Y to training and testing sets
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, shuffle=True, random_state=42)
+# Split the X and the Y to training and validate sets
+x_train, x_validate, y_train, y_validate = train_test_split(X, Y, test_size=0.2, shuffle=True, random_state=42)
 
 # drop any unnecessary columns
 unimportant_columns = ['Name', 'URL', 'Subtitle', 'Icon URL',
@@ -211,6 +215,7 @@ global_vars['Original Release Date'] = datetime.now()
 global_vars['Current Version Release Date'] = datetime.now()
 global_vars['Genres'] = global_vars['Primary Genre']
 global_vars['Description'] = 'No Description'
+
 # Encode categorical columns (Developer, Languages and Primary Genre)
 dev_encoder = CustomLabelEncoder()
 lang_encoder = CustomLabelEncoder()
@@ -253,148 +258,88 @@ y_train = x_data['Rate']
 x_train = x_data.drop('Rate', axis=1)
 
 # print(x_train)
-# ---------------------------------Testing Preprocessing-----------------------------------
+# ---------------------------------validate data Preprocessing-----------------------------------
 
-x_test = x_test.drop(unimportant_columns, axis=1)
+x_validate = x_validate.drop(unimportant_columns, axis=1)
 
-x_test['Description'] = feature_extraction(x_test['Description'])
+x_validate['Description'] = feature_extraction(x_validate['Description'])
 
-# print(x_test.isnull().sum())
-# print(x_test.isnull().sum())
+# print(x_validate.isnull().sum())
+# print(x_validate.isnull().sum())
 
-x_test['In-app Purchases'] = calc_sum_of_list(df['In-app Purchases'])
+x_validate['In-app Purchases'] = calc_sum_of_list(df['In-app Purchases'])
 
-x_test['Size'] = x_test['Size'].astype(int)
-x_test['User Rating Count'] = x_test['User Rating Count'].astype(int)
-x_test['In-app Purchases'].fillna(0, inplace=True)
-x_test['In-app Purchases'] = x_test['In-app Purchases'].astype(int)
+x_validate['Size'] = x_validate['Size'].astype(int)
+x_validate['User Rating Count'] = x_validate['User Rating Count'].astype(int)
+x_validate['In-app Purchases'].fillna(0, inplace=True)
+x_validate['In-app Purchases'] = x_validate['In-app Purchases'].astype(int)
 
 # Remove the '+' sign from the 'Age rating' column
-x_test['Age Rating'] = x_test['Age Rating'].str.replace('+', '', regex=False)
+x_validate['Age Rating'] = x_validate['Age Rating'].str.replace('+', '', regex=False)
 
 # Convert the 'Age rating' column to an integer data type
-x_test['Age Rating'] = x_test['Age Rating'].astype(int)
-
-
+x_validate['Age Rating'] = x_validate['Age Rating'].astype(int)
 
 # Convert the date columns to datetime format
-x_test['Original Release Date'] = pd.to_datetime(x_test['Original Release Date'], format='%d/%m/%Y')
-x_test['Current Version Release Date'] = pd.to_datetime(x_test['Current Version Release Date'], format='%d/%m/%Y')
+x_validate['Original Release Date'] = pd.to_datetime(x_validate['Original Release Date'], format='%d/%m/%Y')
+x_validate['Current Version Release Date'] = pd.to_datetime(x_validate['Current Version Release Date'],
+                                                            format='%d/%m/%Y')
 
 # Extract the year features
-x_test['Original Release Date'] = x_test['Original Release Date'].dt.year.astype(int)
-x_test['Current Version Release Date'] = x_test['Current Version Release Date'].dt.year.astype(int)
+x_validate['Original Release Date'] = x_validate['Original Release Date'].dt.year.astype(int)
+x_validate['Current Version Release Date'] = x_validate['Current Version Release Date'].dt.year.astype(int)
 
-for col in x_test.columns:
+for col in x_validate.columns:
     if col == 'In-app Purchases' or col == 'Price':
-        x_test[col] = fill_nulls(x_test[col], 0)
+        x_validate[col] = fill_nulls(x_validate[col], 0)
     else:
-        x_test[col].fillna(global_vars[col], inplace=True)
+        x_validate[col].fillna(global_vars[col], inplace=True)
 
 # Remove the primary genre from the "Genres" feature
-x_test['Genres'] = x_test['Genres'].apply(lambda x: x.replace(' ', '').split(','))
-x_test['Genres'] = x_test['Genres'].apply(weight_genres)
-x_test['weighted genres'] = x_test['Genres'].apply(lambda x: sum(x.values()))
-x_test['Genres'] = x_test['weighted genres']
-x_test.drop('weighted genres', axis=1)
-# x_test['Genres'] = genres_weight(x_test)
+x_validate['Genres'] = x_validate['Genres'].apply(lambda x: x.replace(' ', '').split(','))
+x_validate['Genres'] = x_validate['Genres'].apply(weight_genres)
+x_validate['weighted genres'] = x_validate['Genres'].apply(lambda x: sum(x.values()))
+x_validate['Genres'] = x_validate['weighted genres']
+x_validate.drop('weighted genres', axis=1)
+# x_validate['Genres'] = genres_weight(x_validate)
 
-data = x_test.join(y_test)
+data = x_validate.join(y_validate)
 data = remove_special_chars(data, 'Developer')
-y_test = data['Rate']
-x_test = data.drop('Rate', axis=1)
-x_test['Developer'] = x_test['Developer'].str.replace(r'\\xe7\\xe3o', ' ', regex=True)
+y_validate = data['Rate']
+x_validate = data.drop('Rate', axis=1)
+x_validate['Developer'] = x_validate['Developer'].str.replace(r'\\xe7\\xe3o', ' ', regex=True)
 
 # Encode categorical columns (Developer, Languages and Primary Genre)
-x_test['Developer'] = dev_encoder.transform(x_test['Developer'])
-x_test['Languages'] = lang_encoder.transform(x_test['Languages'])
+x_validate['Developer'] = dev_encoder.transform(x_validate['Developer'])
+x_validate['Languages'] = lang_encoder.transform(x_validate['Languages'])
 
 # Feature selection using spearman method
-data = x_test.join(y_test)
+data = x_validate.join(y_validate)
 
 mapping = {'Low': 0, 'Intermediate': 1, 'High': 2}
 data['Rate'] = data['Rate'].map(mapping)
 
 game_data = data.iloc[:, :]
 corr = game_data.corr(method='kendall')
-# Top 50% Correlation training features with the Value
-top_feature = corr.index[abs(corr['Rate']) > 0.01]
+# Top Correlated training features with the Value
 
 x_data = game_data[top_feature]
-#
-if 'Genres' not in x_data:
-    rate = x_data['Rate']
-    x_data = x_data.drop('Rate', axis=1)
-    x_data['Genres'] = game_data['Genres']
-    x_data['Rate'] = rate
 
-    # drop last column
-    top_feature = top_feature[:-1]
-
-    # Add additional features to the top_feature list
-    additional_features = ['Genres', 'Rate']
-    top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
-if 'Price' not in x_data:
-    rate = x_data['Rate']
-    x_data = x_data.drop('Rate', axis=1)
-    x_data['Price'] = game_data['Price']
-    x_data['Rate'] = rate
-
-    # drop last column
-    top_feature = top_feature[:-1]
-
-    # Add additional features to the top_feature list
-    additional_features = ['Price', 'Rate']
-    top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
-if 'Languages' not in x_data:
-    rate = x_data['Rate']
-    x_data = x_data.drop('Rate', axis=1)
-    x_data['Languages'] = game_data['Languages']
-    x_data['Rate'] = rate
-
-    # drop last column
-    top_feature = top_feature[:-1]
-
-    # Add additional features to the top_feature list
-    additional_features = ['Languages', 'Rate']
-    top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
-
-if 'Age Rating' not in x_data:
-    rate = x_data['Rate']
-    x_data = x_data.drop('Rate', axis=1)
-    x_data['Age Rating'] = game_data['Age Rating']
-    x_data['Rate'] = rate
-
-    # drop last column
-    top_feature = top_feature[:-1]
-
-    # Add additional features to the top_feature list
-    additional_features = ['Age Rating', 'Rate']
-    top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
-
-if 'Developer' not in x_data:
-    rate = x_data['Rate']
-    x_data = x_data.drop('Rate', axis=1)
-    # x_data['Genres'] = game_data['Genres']
-    x_data['Developer'] = game_data['Developer']
-    x_data['Rate'] = rate
-
-print(top_feature)
 
 # Standardize the data
-standardization = StandardScaler()
-game_data = standardization.fit_transform(x_data)
+
+game_data = standardization.transform(x_data)
 game_data = pd.DataFrame(game_data, columns=top_feature)
-y_test = x_data['Rate']
-x_test = x_data.drop('Rate', axis=1)
+y_validate = x_data['Rate']
+x_validate = x_data.drop('Rate', axis=1)
 
 # get the order of columns in the training data
 train_columns = list(x_train.columns)
 
-# reorder the columns in the test data to match the order in the training data
-x_test = x_test[train_columns]
+# reorder the columns in the validate data to match the order in the training data
+x_validate = x_validate[train_columns]
 
-# print(x_test)
+# print(x_validate)
 print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
@@ -402,28 +347,28 @@ print(
 print("Decision Tree")
 
 # Define the undersampler
-undersampler = RandomUnderSampler()
+# undersampler = RandomUnderSampler()
 
 # Undersample the training data
-x_train_undersampled, y_train_undersampled = undersampler.fit_resample(x_train, y_train)
+# x_train_undersampled, y_train_undersampled = undersampler.fit_resample(x_train, y_train)
 
 # Define the decision tree model with default parameters
-model = DecisionTreeClassifier(max_depth=5, random_state=42)
+decisionTree = DecisionTreeClassifier(max_depth=5, random_state=42)
 # Fit the model to the undersampled training data using cross-validation
-scores = cross_val_score(model, x_train_undersampled, y_train_undersampled, cv=5)
+scores = cross_val_score(decisionTree, x_train, y_train, cv=5)
 
 # Print the cross-validation scores
 print("Cross-validation scores:", scores)
 print("Mean accuracy:", scores.mean())
 
 # Fit the model to the undersampled training data without cross-validation
-model.fit(x_train_undersampled, y_train_undersampled)
+decisionTree.fit(x_train, y_train)
 
 # Predict the labels of the training data
-y_pred_train = model.predict(x_train)
+y_pred_train = decisionTree.predict(x_train)
 
-# Predict the labels of the test data
-y_pred_test = model.predict(x_test)
+# Predict the labels of the validate data
+y_pred_validate = decisionTree.predict(x_validate)
 
 # plt.scatter(y_train, y_pred_train)
 # plt.xlabel('y_train ', fontsize = 20)
@@ -432,27 +377,26 @@ y_pred_test = model.predict(x_test)
 # plt.show()
 #
 #
-# plt.scatter(y_test, y_pred_test)
-# plt.xlabel('y_test ', fontsize = 20)
-# plt.ylabel('y_pred_test', fontsize = 20)
-# plt.plot(y_test, y_pred_test, color='red', linewidth = 3)
+# plt.scatter(y_validate, y_pred_validate)
+# plt.xlabel('y_validate ', fontsize = 20)
+# plt.ylabel('y_pred_validate', fontsize = 20)
+# plt.plot(y_validate, y_pred_validate, color='red', linewidth = 3)
 # plt.show()
 
-from sklearn.tree import plot_tree
 
 # Visualize the decision tree
 plt.figure(figsize=(20, 10))
-plot_tree(model, filled=True)
+plot_tree(decisionTree, filled=True)
 plt.show()
 
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
 
-# Calculate theaccuracy of the model on the test data
-accuracy_test = accuracy_score(y_test, y_pred_test)
+# Calculate the accuracy of the model on the validate data
+accuracy_validate = accuracy_score(y_validate, y_pred_validate)
 
 print("Accuracy on training data:", accuracy_train)
-print("Accuracy on test data:", accuracy_test)
+print("Accuracy on validate data:", accuracy_validate)
 print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
@@ -460,23 +404,23 @@ print(
 print("Random Forest")
 
 # Create a Random Forest classifier with 100 trees
-rf = RandomForestClassifier(n_estimators=6, max_depth=6)
+random_forest = RandomForestClassifier(n_estimators=6, max_depth=6)
 
 # Perform 5-fold cross-validation on the training data
-scores = cross_val_score(rf, x_train, y_train, cv=5)
+scores = cross_val_score(random_forest, x_train, y_train, cv=5)
 
 # Print the cross-validation scores
 print("Cross-validation scores:", scores)
 print("Mean accuracy:", scores.mean())
 
 # Fit the model to the training data without cross-validation
-rf.fit(x_train, y_train)
+random_forest.fit(x_train, y_train)
 
 # Predict on the training data
-y_pred_train = rf.predict(x_train)
+y_pred_train = random_forest.predict(x_train)
 
-# Predict on the test data
-y_pred_test = rf.predict(x_test)
+# Predict on the validate data
+y_pred_validate = random_forest.predict(x_validate)
 
 #
 # plt.scatter(y_train, y_pred_train)
@@ -486,24 +430,24 @@ y_pred_test = rf.predict(x_test)
 # plt.show()
 #
 #
-# plt.scatter(y_test, y_pred_test)
-# plt.xlabel('y_test ', fontsize = 20)
-# plt.ylabel('y_pred_test', fontsize = 20)
-# plt.plot(y_test, y_pred_test, color='red', linewidth = 3)
+# plt.scatter(y_validate, y_pred_validate)
+# plt.xlabel('y_validate ', fontsize = 20)
+# plt.ylabel('y_pred_validate', fontsize = 20)
+# plt.plot(y_validate, y_pred_validate, color='red', linewidth = 3)
 # plt.show()
 
 plt.figure(figsize=(20, 10))
-plot_tree(rf.estimators_[0], feature_names=x_train.columns)
+plot_tree(random_forest.estimators_[0], feature_names=x_train.columns)
 plt.show()
 
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
 
-# Calculate the accuracy of the model on the test data
-accuracy_test = accuracy_score(y_test, y_pred_test)
+# Calculate the accuracy of the model on the validate data
+accuracy_validate = accuracy_score(y_validate, y_pred_validate)
 
 print("Accuracy on training data:", accuracy_train)
-print("Accuracy on test data:", accuracy_test)
+print("Accuracy on validate data:", accuracy_validate)
 print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
@@ -526,8 +470,8 @@ svm_clf.fit(x_train, y_train)
 # Predict on the training data
 y_pred_train = svm_clf.predict(x_train)
 
-# Predict on the test data
-y_pred_test = svm_clf.predict(x_test)
+# Predict on the validate data
+y_pred_validate = svm_clf.predict(x_validate)
 
 #
 # plt.scatter(y_train, y_pred_train)
@@ -537,10 +481,10 @@ y_pred_test = svm_clf.predict(x_test)
 # plt.show()
 #
 #
-# plt.scatter(y_test, y_pred_test)
-# plt.xlabel('y_test ', fontsize = 20)
-# plt.ylabel('y_pred_test', fontsize = 20)
-# plt.plot(y_test, y_pred_test, color='red', linewidth = 3)
+# plt.scatter(y_validate, y_pred_validate)
+# plt.xlabel('y_validate ', fontsize = 20)
+# plt.ylabel('y_pred_validate', fontsize = 20)
+# plt.plot(y_validate, y_pred_validate, color='red', linewidth = 3)
 # plt.show()
 #
 # import matplotlib.pyplot as plt
@@ -559,11 +503,11 @@ y_pred_test = svm_clf.predict(x_test)
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
 
-# Calculate the accuracy of the model on the test data
-accuracy_test = accuracy_score(y_test, y_pred_test)
+# Calculate the accuracy of the model on the validate data
+accuracy_validate = accuracy_score(y_validate, y_pred_validate)
 
 print("Accuracy on training data:", accuracy_train)
-print("Accuracy on test data:", accuracy_test)
+print("Accuracy on validate data:", accuracy_validate)
 print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
@@ -586,8 +530,8 @@ svm_clf2.fit(x_train, y_train)
 # Predict on the training data
 y_pred_train = svm_clf2.predict(x_train)
 
-# Predict on the test data
-y_pred_test = svm_clf2.predict(x_test)
+# Predict on the validate data
+y_pred_validate = svm_clf2.predict(x_validate)
 
 # plt.scatter(y_train, y_pred_train)
 # plt.xlabel('y_train ', fontsize = 20)
@@ -596,21 +540,21 @@ y_pred_test = svm_clf2.predict(x_test)
 # plt.show()
 #
 #
-# plt.scatter(y_test, y_pred_test)
-# plt.xlabel('y_test ', fontsize = 20)
-# plt.ylabel('y_pred_test', fontsize = 20)
-# plt.plot(y_test, y_pred_test, color='red', linewidth = 3)
+# plt.scatter(y_validate, y_pred_validate)
+# plt.xlabel('y_validate ', fontsize = 20)
+# plt.ylabel('y_pred_validate', fontsize = 20)
+# plt.plot(y_validate, y_pred_validate, color='red', linewidth = 3)
 # plt.show()
 
 
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
 
-# Calculate the accuracy of the model on the test data
-accuracy_test = accuracy_score(y_test, y_pred_test)
+# Calculate the accuracy of the model on the validate data
+accuracy_validate = accuracy_score(y_validate, y_pred_validate)
 
 print("Accuracy on training data:", accuracy_train)
-print("Accuracy on test data:", accuracy_test)
+print("Accuracy on validate data:", accuracy_validate)
 print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
@@ -633,8 +577,8 @@ lr_model.fit(x_train, y_train)
 # Predict on the training data
 y_pred_train = lr_model.predict(x_train)
 
-# Predict on the testing data
-y_pred_test = lr_model.predict(x_test)
+# Predict on the validate data
+y_pred_validate = lr_model.predict(x_validate)
 
 # plt.scatter(y_train, y_pred_train)
 # plt.xlabel('y_train ', fontsize = 20)
@@ -643,33 +587,33 @@ y_pred_test = lr_model.predict(x_test)
 # plt.show()
 #
 #
-# plt.scatter(y_test, y_pred_test)
-# plt.xlabel('y_test ', fontsize = 20)
-# plt.ylabel('y_pred_test', fontsize = 20)
-# plt.plot(y_test, y_pred_test, color='red', linewidth = 3)
+# plt.scatter(y_validate, y_pred_validate)
+# plt.xlabel('y_validate ', fontsize = 20)
+# plt.ylabel('y_pred_validate', fontsize = 20)
+# plt.plot(y_validate, y_pred_validate, color='red', linewidth = 3)
 # plt.show()
 #
 
-x = pd.concat([x_test, x_train])
-y = pd.concat([y_test, y_train])
+x = pd.concat([x_validate, x_train])
+y = pd.concat([y_validate, y_train])
 df = x.join(y)
 
-sns.regplot(x=x_test['Developer'], y=y_pred_test, data=df, logistic=True, ci=None)
-plt.plot(x_test, y_pred_test)
+sns.regplot(x=x_validate['Developer'], y=y_pred_validate, data=df, logistic=True, ci=None)
+plt.plot(x_validate, y_pred_validate)
 plt.show()
 
-sns.regplot(x=x_test['Size'], y=y_pred_test, data=df, logistic=True, ci=None)
-plt.plot(x_test, y_pred_test)
+sns.regplot(x=x_validate['Size'], y=y_pred_validate, data=df, logistic=True, ci=None)
+plt.plot(x_validate, y_pred_validate)
 plt.show()
 
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
 
-# Calculate the accuracy of the model on the testing data
-accuracy_test = accuracy_score(y_test, y_pred_test)
+# Calculate the accuracy of the model on the validate data
+accuracy_validate = accuracy_score(y_validate, y_pred_validate)
 
 print("Accuracy on training data:", accuracy_train)
-print("Accuracy on testing data:", accuracy_test)
+print("Accuracy on validate data:", accuracy_validate)
 print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
@@ -677,23 +621,23 @@ print(
 print("Naive Bayes classifier")
 
 # Create a Gaussian Naive Bayes classifier
-model = GaussianNB()
+GNB = GaussianNB()
 
 # Perform 5-fold cross-validation on the training data
-scores = cross_val_score(model, x_train, y_train, cv=5)
+scores = cross_val_score(GNB, x_train, y_train, cv=5)
 
 # Print the cross-validation scores
 print("Cross-validation scores:", scores)
 print("Mean accuracy:", scores.mean())
 
 # Train the model using the training data without cross-validation
-model.fit(x_train, y_train)
+GNB.fit(x_train, y_train)
 
 # Predict on the training data
-y_pred_train = model.predict(x_train)
+y_pred_train = GNB.predict(x_train)
 
-# Predict on the test data
-y_pred_test = model.predict(x_test)
+# Predict on the validate data
+y_pred_validate = GNB.predict(x_validate)
 
 #
 # plt.scatter(y_train, y_pred_train)
@@ -703,10 +647,10 @@ y_pred_test = model.predict(x_test)
 # plt.show()
 #
 #
-# plt.scatter(y_test, y_pred_test)
-# plt.xlabel('y_test ', fontsize = 20)
-# plt.ylabel('y_pred_test', fontsize = 20)
-# plt.plot(y_test, y_pred_test, color='red', linewidth = 3)
+# plt.scatter(y_validate, y_pred_validate)
+# plt.xlabel('y_validate ', fontsize = 20)
+# plt.ylabel('y_pred_validate', fontsize = 20)
+# plt.plot(y_validate, y_pred_validate, color='red', linewidth = 3)
 # plt.show()
 #
 # from mlxtend.plotting import plot_decision_regions
@@ -719,37 +663,37 @@ y_pred_test = model.predict(x_test)
 # Calculate the accuracy of the model on the training data
 accuracy_train = accuracy_score(y_train, y_pred_train)
 
-# Calculate the accuracy of the model on the test data
-accuracy_test = accuracy_score(y_test, y_pred_test)
+# Calculate the accuracy of the model on the validate data
+accuracy_validate = accuracy_score(y_validate, y_pred_validate)
 
 print("Accuracy on training data:", accuracy_train)
-print("Accuracy on test data:", accuracy_test)
+print("Accuracy on validate data:", accuracy_validate)
 print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
 # ----------------------------------------------------------------------------------------------------------------------
 print("KNN")
 
-# Define a range of K values to test
+# Define a range of K values to validate
 k_values = range(1, 15)
 
-# Initialize empty lists to store the training and testing accuracy scores
+# Initialize empty lists to store the training and validate accuracy scores
 train_scores = []
-test_scores = []
+validate_scores = []
 
-# Loop over each K value and fit the KNN model, then compute training and testing accuracy scores using cross-validation
+# Loop over each K value and fit the KNN model,
+# then compute training and validate accuracy scores using cross-validation
+
 for k in k_values:
     knn = KNeighborsClassifier(n_neighbors=k)
     train_cv_scores = cross_val_score(knn, x_train, y_train, cv=3)
-    test_cv_scores = cross_val_score(knn, x_test, y_test, cv=3)
+    validate_cv_scores = cross_val_score(knn, x_validate, y_validate, cv=3)
     train_scores.append(train_cv_scores.mean())
-    test_scores.append(test_cv_scores.mean())
+    validate_scores.append(validate_cv_scores.mean())
 
-# Plot the training and testing accuracy scores as a function of K
-import matplotlib.pyplot as plt
-
+# Plot the training and validate accuracy scores as a function of K
 plt.plot(k_values, train_scores, label="Training")
-plt.plot(k_values, test_scores, label="Testing")
+plt.plot(k_values, validate_scores, label="validate")
 plt.xlabel("K")
 plt.ylabel("Accuracy")
 plt.title("KNN Accuracy Scores")
@@ -758,11 +702,11 @@ plt.show()
 
 knn = KNeighborsClassifier(n_neighbors=1)
 train_cv_scores = cross_val_score(knn, x_train, y_train, cv=5)
-test_cv_scores = cross_val_score(knn, x_test, y_test, cv=5)
+validate_cv_scores = cross_val_score(knn, x_validate, y_validate, cv=5)
 
 # Print the mean and standard deviation of the accuracy scores
 print("Training Accuracy:", train_cv_scores.mean())
-print("Test Accuracy:", test_cv_scores.mean())
+print("validate Accuracy:", validate_cv_scores.mean())
 
 print()
 print(
@@ -785,23 +729,23 @@ print("Cross-validation scores:", scores)
 print("Mean accuracy:", scores.mean())
 
 # Train Adaboost Classifer on the training data without cross-validation
-model = abc.fit(x_train, y_train)
+ada = abc.fit(x_train, y_train)
 
 # Predict the response for training dataset
-y_pred_train = model.predict(x_train)
+y_pred_train = ada.predict(x_train)
 
-# Predict the response for test dataset
-y_pred_test = model.predict(x_test)
+# Predict the response for validate dataset
+y_pred_validate = ada.predict(x_validate)
 
 # Calculate the accuracy of the model on the training data
 accuracy_train = metrics.accuracy_score(y_train, y_pred_train)
 
-# Calculate the accuracy of the model on the test data
-accuracy_test = metrics.accuracy_score(y_test, y_pred_test)
+# Calculate the accuracy of the model on the validate data
+accuracy_validate = metrics.accuracy_score(y_validate, y_pred_validate)
 
 # Print the accuracies
 print("Accuracy on training data:", accuracy_train)
-print("Accuracy on test data:", accuracy_test)
+print("Accuracy on validate data:", accuracy_validate)
 
 # Visualize the decision tree
 plt.figure(figsize=(20, 10))
@@ -830,9 +774,9 @@ print("Mean accuracy:", scores.mean())
 # Train the Bagging classifier on the training data without cross-validation
 bagging.fit(x_train, y_train)
 
-# Predict the labels for both the training and test data
+# Predict the labels for both the training and validate data
 y_train_pred = bagging.predict(x_train)
-y_test_pred = bagging.predict(x_test)
+y_validate_pred = bagging.predict(x_validate)
 
 # plt.scatter(y_train, y_pred_train)
 # plt.xlabel('y_train ', fontsize = 20)
@@ -841,24 +785,24 @@ y_test_pred = bagging.predict(x_test)
 # plt.show()
 #
 #
-# plt.scatter(y_test, y_pred_test)
-# plt.xlabel('y_test ', fontsize = 20)
-# plt.ylabel('y_pred_test', fontsize = 20)
-# plt.plot(y_test, y_pred_test, color='red', linewidth = 3)
+# plt.scatter(y_validate, y_pred_validate)
+# plt.xlabel('y_validate ', fontsize = 20)
+# plt.ylabel('y_pred_validate', fontsize = 20)
+# plt.plot(y_validate, y_pred_validate, color='red', linewidth = 3)
 # plt.show()
 #
-import matplotlib.pyplot as plt
 
-plt.plot(x_test, y_test_pred)
+
+plt.plot(x_validate, y_validate_pred)
 plt.show()
 
-# Calculate the accuracy of the model on the training and test data
+# Calculate the accuracy of the model on the training and validate data
 train_accuracy = accuracy_score(y_train, y_train_pred)
-test_accuracy = accuracy_score(y_test, y_test_pred)
+validate_accuracy = accuracy_score(y_validate, y_validate_pred)
 
 # Print the accuracy scores
 print("Accuracy on training data:", train_accuracy)
-print("Accuracy on test data:", test_accuracy)
+print("Accuracy on validate data:", validate_accuracy)
 print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
@@ -897,16 +841,17 @@ meta_clf.fit(meta_X_train, y_train)
 # Make predictions on the train set using the metamodel
 meta_pred_train = meta_clf.predict(meta_X_train)
 
-# Use the predictions from the base models as input features to make predictions on the test set using the metamodel
-lr_pred_test = lr.predict(x_test)
-dt_pred_test = dt.predict(x_test)
-# knn_pred_test = knn.predict(x_test)
-rf_pred_test = rf.predict(x_test)
-bg_pred_test = bg.predict(x_test)
-ab_pred_test = ab.predict(x_test)
+# Use the predictions from the base models as input features to make predictions on the validate set using the metamodel
+lr_pred_validate = lr.predict(x_validate)
+dt_pred_validate = dt.predict(x_validate)
+# knn_pred_validate = knn.predict(x_validate)
+rf_pred_validate = rf.predict(x_validate)
+bg_pred_validate = bg.predict(x_validate)
+ab_pred_validate = ab.predict(x_validate)
 
-meta_x_test = np.column_stack((lr_pred_test, dt_pred_test, rf_pred_test, bg_pred_test, ab_pred_test))
-meta_pred_test = meta_clf.predict(meta_x_test)
+meta_x_validate = np.column_stack(
+    (lr_pred_validate, dt_pred_validate, rf_pred_validate, bg_pred_validate, ab_pred_validate))
+meta_pred_validate = meta_clf.predict(meta_x_validate)
 
 #
 # plt.scatter(y_train, meta_pred_train)
@@ -916,21 +861,21 @@ meta_pred_test = meta_clf.predict(meta_x_test)
 # plt.show()
 #
 #
-# plt.scatter(y_test, meta_pred_test)
-# plt.xlabel('y_test ', fontsize = 20)
-# plt.ylabel('meta_pred_test', fontsize = 20)
-# plt.plot(y_test, meta_pred_test, color='red', linewidth = 3)
+# plt.scatter(y_validate, meta_pred_validate)
+# plt.xlabel('y_validate ', fontsize = 20)
+# plt.ylabel('meta_pred_validate', fontsize = 20)
+# plt.plot(y_validate, meta_pred_validate, color='red', linewidth = 3)
 # plt.show()
 
-plt.plot(x_test, meta_pred_test)
+plt.plot(x_validate, meta_pred_validate)
 plt.show()
 
-# Evaluate the performance of the metamodel on the train and test sets
+# Evaluate the performance of the metamodel on the train and validate sets
 train_accuracy = accuracy_score(y_train, meta_pred_train)
-test_accuracy = accuracy_score(y_test, meta_pred_test)
+validate_accuracy = accuracy_score(y_validate, meta_pred_validate)
 
 print('Accuracy of stacking ensemble on train set:', train_accuracy)
-print('Accuracy of stacking ensemble on test set:', test_accuracy)
+print('Accuracy of stacking ensemble on validate set:', validate_accuracy)
 
 print()
 print(
@@ -943,12 +888,12 @@ RANDOM_SEED = 42
 clf1 = AdaBoostClassifier(base_estimator=base_clf, n_estimators=100, learning_rate=0.5)
 clf2 = RandomForestClassifier(random_state=RANDOM_SEED)
 clf3 = GaussianNB()
-lr = LogisticRegression()
+Lr = LogisticRegression()
 
 # Starting from v0.16.0, StackingCVRegressor supports
 # `random_state` to get deterministic result.
 sclf = StackingCVClassifier(classifiers=[clf1, clf2, clf3],
-                            meta_classifier=lr,
+                            meta_classifier=Lr,
                             random_state=RANDOM_SEED)
 
 print('3-fold cross validation:\n')
@@ -958,8 +903,21 @@ for clf, label in zip([clf1, clf2, clf3, sclf],
                        'Random Forest',
                        'Naive Bayes',
                        'StackingClassifier']):
-    scores = model_selection.cross_val_score(clf, x_test, y_test, cv=3, scoring='accuracy')
+    scores = model_selection.cross_val_score(clf, x_validate, y_validate, cv=3, scoring='accuracy')
     print("Accuracy: ", scores.mean(), " Model: ", label)
+
+# region Store models and vars in .pkl file
+models = {'decisionTree': decisionTree, 'random_forest': random_forest, 'svm_clf': svm_clf, 'svm_clf2': svm_clf2,
+          'lr_model': lr_model, 'GNB': GNB, 'knn': knn, 'base_clf': base_clf, 'ada': ada, 'bagging': bagging, 'lr': lr,
+          'dt': dt, 'rf': rf, 'bg': bg, 'ab': ab, 'meta_clf': meta_clf, 'clf1': clf1, 'clf2': clf2, 'clf3': clf3,
+          'Lr': Lr}
+variables = {'x_train': x_train, 'y_train': y_train, 'unimportant_columns': unimportant_columns,
+             'top_features': top_feature,
+             'standardization': standardization, 'global_vars': global_vars, 'dev_encoder': dev_encoder,
+             'lang_encoder': lang_encoder}
+pickle.dump(models, open('classifiers.pkl', 'wb'))
+pickle.dump(variables, open('variables.pkl', 'wb'))
+# endregion
 
 # import matplotlib.pyplot as plt
 # from mlxtend.plotting import plot_decision_regions
@@ -977,8 +935,8 @@ for clf, label in zip([clf1, clf2, clf3, sclf],
 #                           'StackingCVClassifier'],
 #                           itertools.product([0, 1], repeat=2)):
 #
-#     clf.fit(x_test, y_test)
+#     clf.fit(x_validate, y_validate)
 #     ax = plt.subplot(gs[grd[0], grd[1]])
-#     fig = plot_decision_regions(X=x_test.values, y=y_test.values, clf=clf,legend=2  ,filler_feature_values={ 1: 0.5, 0: 0.5,2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5, 6: 0.5, 7: 0.5, 8: 0.5, 9: 0.5, 10: 0.5},)
+#     fig = plot_decision_regions(X=x_validate.values, y=y_validate.values, clf=clf,legend=2  ,filler_feature_values={ 1: 0.5, 0: 0.5,2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5, 6: 0.5, 7: 0.5, 8: 0.5, 9: 0.5, 10: 0.5},)
 #     plt.title(lab)
 # plt.show()
