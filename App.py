@@ -125,6 +125,7 @@ models_list = pickle.load(open('classifiers.pkl', 'rb'))
 decisionTree = models_list['decisionTree']
 random_forest = models_list['random_forest']
 svm_clf = models_list['svm_clf']
+svm_clf_poly=models_list['svm_clf_poly']
 svm_clf2 = models_list['svm_clf2']
 lr_model = models_list['lr_model']
 GNB = models_list['GNB']

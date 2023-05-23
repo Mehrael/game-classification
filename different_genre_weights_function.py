@@ -235,20 +235,7 @@ top_feature = corr.index[abs(corr['Rate']) > 0.01]
 
 x_data = game_data[top_feature]
 
-if 'Developer' not in x_data:
-    rate = x_data['Rate']
-    x_data = x_data.drop('Rate', axis=1)
-    x_data['Developer'] = game_data['Developer']
-    x_data['Rate'] = rate
-
-    # drop last column
-    top_feature = top_feature[:-1]
-
-    # Add additional features to the top_feature list
-    additional_features = ['Developer', 'Rate']
-    top_feature = pd.Index(np.concatenate([top_feature.values, additional_features]))
-
-print(top_feature)
+print("Top featuressssss:",top_feature)
 
 # Standardize the data
 standardization = StandardScaler()
@@ -452,10 +439,10 @@ print()
 print(
     "----------------------------------------------------------------------------------------------------------------")
 # -----------------------------------------------------------------------------------------------------------------------
-print("SVM poly")
+print("SVM WITHOUT kernal")
 
 # Create an SVM classifier with a polynomial kernel of degree 5
-svm_clf = svm.SVC(kernel='poly', degree=2)
+svm_clf = svm.SVC()
 
 # Perform 5-fold cross-validation on the training data
 scores = cross_val_score(svm_clf, x_train, y_train, cv=5)
@@ -472,6 +459,65 @@ y_pred_train = svm_clf.predict(x_train)
 
 # Predict on the validate data
 y_pred_validate = svm_clf.predict(x_validate)
+
+#
+# plt.scatter(y_train, y_pred_train)
+# plt.xlabel('y_train ', fontsize = 20)
+# plt.ylabel('y_pred_train', fontsize = 20)
+# plt.plot(y_train , y_pred_train, color='red', linewidth = 3)
+# plt.show()
+#
+#
+# plt.scatter(y_validate, y_pred_validate)
+# plt.xlabel('y_validate ', fontsize = 20)
+# plt.ylabel('y_pred_validate', fontsize = 20)
+# plt.plot(y_validate, y_pred_validate, color='red', linewidth = 3)
+# plt.show()
+#
+# import matplotlib.pyplot as plt
+# from mlxtend.plotting import plot_decision_regions
+#
+# plot_decision_regions(x_train.values, y_train.values, clf=svm_clf, legend=2, feature_index=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
+#
+# # Adding axes annotations
+# plt.xlabel('X')
+# plt.ylabel('Y')
+# plt.title('SVM poly')
+#
+# plt.show()
+
+
+# Calculate the accuracy of the model on the training data
+accuracy_train = accuracy_score(y_train, y_pred_train)
+
+# Calculate the accuracy of the model on the validate data
+accuracy_validate = accuracy_score(y_validate, y_pred_validate)
+
+print("Accuracy on training data:", accuracy_train)
+print("Accuracy on validate data:", accuracy_validate)
+print()
+print(
+    "----------------------------------------------------------------------------------------------------------------")
+print("SVM poly")
+
+# Create an SVM classifier with a polynomial kernel of degree 5
+svm_clf_poly = svm.SVC(kernel='poly', degree=2)
+
+# Perform 5-fold cross-validation on the training data
+scores = cross_val_score(svm_clf_poly, x_train, y_train, cv=5)
+
+# Print the cross-validation scores
+print("Cross-validation scores:", scores)
+print("Mean accuracy:", scores.mean())
+
+# Fit the model to the training data without cross-validation
+svm_clf_poly.fit(x_train, y_train)
+
+# Predict on the training data
+y_pred_train = svm_clf_poly.predict(x_train)
+
+# Predict on the validate data
+y_pred_validate = svm_clf_poly.predict(x_validate)
 
 #
 # plt.scatter(y_train, y_pred_train)
@@ -598,9 +644,6 @@ x = pd.concat([x_validate, x_train])
 y = pd.concat([y_validate, y_train])
 df = x.join(y)
 
-sns.regplot(x=x_validate['Developer'], y=y_pred_validate, data=df, logistic=True, ci=None)
-plt.plot(x_validate, y_pred_validate)
-plt.show()
 
 sns.regplot(x=x_validate['Size'], y=y_pred_validate, data=df, logistic=True, ci=None)
 plt.plot(x_validate, y_pred_validate)
@@ -907,7 +950,7 @@ for clf, label in zip([clf1, clf2, clf3, sclf],
     print("Accuracy: ", scores.mean(), " Model: ", label)
 
 # region Store models and vars in .pkl file
-models = {'decisionTree': decisionTree, 'random_forest': random_forest, 'svm_clf': svm_clf, 'svm_clf2': svm_clf2,
+models = {'decisionTree': decisionTree, 'random_forest': random_forest, 'svm_clf': svm_clf, 'svm_clf2': svm_clf2,'svm_clf_poly': svm_clf_poly,
           'lr_model': lr_model, 'GNB': GNB, 'knn': knn, 'base_clf': base_clf, 'ada': ada, 'bagging': bagging, 'lr': lr,
           'dt': dt, 'rf': rf, 'bg': bg, 'ab': ab, 'meta_clf': meta_clf, 'clf1': clf1, 'clf2': clf2, 'clf3': clf3,
           'Lr': Lr}
