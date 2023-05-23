@@ -27,6 +27,8 @@ from sklearn.tree import DecisionTreeClassifier
 from CustomLabelEncoder import CustomLabelEncoder
 from sklearn.tree import plot_tree
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+
 
 warnings.filterwarnings('ignore')
 
@@ -363,7 +365,29 @@ y_pred_validate = decisionTree.predict(x_validate)
 # plt.ylabel('y_pred_validate', fontsize = 20)
 # plt.plot(y_validate, y_pred_validate, color='red', linewidth = 3)
 # plt.show()
+# Instantiate the PCA transformer with two components
+pca = PCA(n_components=2)
 
+# Fit and transform the training set using PCA
+X_train_pca = pca.fit_transform(x_train)
+
+# Define the decision tree model with default parameters
+decisionTree = DecisionTreeClassifier(max_depth=5, random_state=42)
+
+# Fit the model to the transformed training data using cross-validation
+scores = cross_val_score(decisionTree, X_train_pca, y_train, cv=5)
+
+# Print the cross-validation scores
+print("Cross-validation scores:", scores)
+print("Mean accuracy:", scores.mean())
+
+# Fit the model to the transformed training data without cross-validation
+decisionTree.fit(X_train_pca, y_train)
+
+# Visualize the decision tree using the transformed data
+plt.figure(figsize=(20, 10))
+plot_tree(decisionTree, filled=True)
+plt.show()
 
 # Visualize the decision tree
 plt.figure(figsize=(20, 10))
@@ -430,6 +454,17 @@ accuracy_validate = accuracy_score(y_validate, y_pred_validate)
 print("Accuracy on training data:", accuracy_train)
 print("Accuracy on validate data:", accuracy_validate)
 print()
+
+# Fit PCA to the standardized data
+pca = PCA(n_components=3)
+x_pca = pca.fit_transform(x_train)
+
+# Plot the first two principal components
+plt.scatter(x_pca[:, 0], x_pca[:, 1], c=y_train, cmap='viridis')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.title('Random Forest Classifier on Training Data (PCA)')
+plt.show()
 print(
     "----------------------------------------------------------------------------------------------------------------")
 # -----------------------------------------------------------------------------------------------------------------------
